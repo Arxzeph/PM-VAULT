@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-linux:
     runs-on: ubuntu-22.04
@@ -49,7 +52,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkYXZ2aWppb29mY2hta2dtaWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1ODQzMDIsImV4cCI6MjEwNjE2MDMwMn0.8c3urWFa1v1_JZkl-xElT4Pq77qvKGp-hAw6oROrNiQ"
         run: npm run tauri build
 
-      - name: Upload Linux Bundles (.AppImage & .deb)
+      - name: Upload Linux Bundles as Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: PM-Vault-Linux-Packages
@@ -57,3 +60,16 @@ jobs:
             desktop/src-tauri/target/release/bundle/appimage/*.AppImage
             desktop/src-tauri/target/release/bundle/deb/*.deb
             desktop/src-tauri/target/release/desktop
+
+      - name: Publish Public GitHub Release (No Login Needed to Download)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v0.1.0-linux"
+          name: "PM Vault Linux v0.1.0 (Parrot / Debian / Ubuntu)"
+          draft: false
+          prerelease: false
+          files: |
+            desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            desktop/src-tauri/target/release/bundle/deb/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,6 +6,7 @@ import '../providers/vault_providers.dart';
 import '../services/sync_engine.dart';
 import 'entry_editor_dialog.dart';
 import 'password_generator_sheet.dart';
+import 'service_icon.dart';
 
 class VaultView extends ConsumerStatefulWidget {
   const VaultView({super.key});
@@ -16,38 +17,38 @@ class VaultView extends ConsumerStatefulWidget {
 
 class _VaultViewState extends ConsumerState<VaultView> {
   String _searchQuery = '';
-  String _filter = 'all'; // 'all', 'favorites', 'logins', 'notes'
+  String _filter = 'all'; // 'all', 'favorites', 'logins', 'passkeys', 'notes'
   String? _selectedTag;
+  String? _copiedKey;
 
   void _openEditor([VaultEntry? entry]) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (ctx) => EntryEditorDialog(
-          initialEntry: entry,
-          onSave: ({
-            String? id,
-            required String title,
-            String? username,
-            String? password,
-            String? url,
-            String? notes,
-            List<String> tags = const [],
-            bool favorite = false,
-          }) async {
-            await ref.read(vaultProvider.notifier).saveEntry(
-                  id: id,
-                  title: title,
-                  username: username,
-                  password: password,
-                  url: url,
-                  notes: notes,
-                  tags: tags,
-                  favorite: favorite,
-                );
-          },
-        ),
-      ),
+    EntryEditorDialog.show(
+      context: context,
+      entry: entry,
+      onSave: ({
+        String? id,
+        required String title,
+        String? username,
+        String? password,
+        String? url,
+        String? notes,
+        List<String> tags = const [],
+        bool favorite = false,
+      }) async {
+        await ref.read(vaultProvider.notifier).saveEntry(
+              id: id,
+              title: title,
+              username: username,
+              password: password,
+              url: url,
+              notes: notes,
+              tags: tags,
+              favorite: favorite,
+            );
+      },
+      onDelete: (id) async {
+        await ref.read(vaultProvider.notifier).deleteEntry(id);
+      },
     );
   }
 
@@ -60,12 +61,29 @@ class _VaultViewState extends ConsumerState<VaultView> {
     );
   }
 
+  void _copyToClipboard(String text, String key, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    setState(() => _copiedKey = key);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label copied to clipboard'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF18181B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _copiedKey = null);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final vault = ref.watch(vaultProvider);
     final notifier = ref.read(vaultProvider.notifier);
 
-    // Collect all tags
+    // Collect all unique tags
     final Set<String> allTags = {};
     for (final e in vault.entries) {
       allTags.addAll(e.tags);
@@ -75,7 +93,11 @@ class _VaultViewState extends ConsumerState<VaultView> {
     final filtered = vault.entries.where((e) {
       if (_filter == 'favorites' && !e.favorite) return false;
       if (_filter == 'logins' && (e.password == null || e.password!.isEmpty)) return false;
-      if (_filter == 'notes' && (e.notes == null || e.notes!.isEmpty || (e.password != null && e.password!.isNotEmpty))) return false;
+      if (_filter == 'passkeys' && !e.tags.contains('passkey')) return false;
+      if (_filter == 'notes' &&
+          (e.notes == null || e.notes!.isEmpty || (e.password != null && e.password!.isNotEmpty))) {
+        return false;
+      }
       if (_selectedTag != null && !e.tags.contains(_selectedTag)) return false;
 
       if (_searchQuery.isNotEmpty) {
@@ -93,36 +115,62 @@ class _VaultViewState extends ConsumerState<VaultView> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF020817),
+      backgroundColor: const Color(0xFF09090B),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: const Color(0xFF0C0D0E),
         elevation: 0,
-        title: const Row(
+        titleSpacing: 16,
+        title: Row(
           children: [
-            Icon(Icons.lock_rounded, color: Color(0xFF6366F1), size: 20),
-            SizedBox(width: 8),
-            Text(
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: const Color(0xFF18181B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 16),
+            ),
+            const SizedBox(width: 10),
+            const Text(
               'PM Vault',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Color(0xFF10B981),
+                shape: BoxShape.circle,
+              ),
             ),
           ],
         ),
         actions: [
-          // Sync status indicator
+          // Cloud Sync status indicator
           InkWell(
             onTap: () => notifier.triggerSync(),
             borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getSyncColor(vault.syncStatus).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _getSyncColor(vault.syncStatus).withOpacity(0.25)),
+              ),
               child: Row(
                 children: [
                   _buildSyncIcon(vault.syncStatus),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Text(
                     _getSyncLabel(vault.syncStatus),
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                       color: _getSyncColor(vault.syncStatus),
                     ),
                   ),
@@ -130,14 +178,20 @@ class _VaultViewState extends ConsumerState<VaultView> {
               ),
             ),
           ),
+          // Generator shortcut
           IconButton(
-            icon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF6366F1), size: 20),
+            icon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981), size: 18),
             tooltip: 'Password Generator',
             onPressed: _openGenerator,
           ),
+          // More Menu
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
-            color: const Color(0xFF0F172A),
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white60, size: 18),
+            color: const Color(0xFF121316),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: Color(0xFF27272A)),
+            ),
             onSelected: (val) async {
               if (val == 'sync') {
                 notifier.triggerSync();
@@ -147,11 +201,15 @@ class _VaultViewState extends ConsumerState<VaultView> {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    backgroundColor: const Color(0xFF0F172A),
-                    title: const Text('Re-link Vault?', style: TextStyle(color: Colors.white)),
+                    backgroundColor: const Color(0xFF121316),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Color(0xFF27272A)),
+                    ),
+                    title: const Text('Re-link Vault?', style: TextStyle(color: Colors.white, fontSize: 16)),
                     content: const Text(
                       'Clear local cache on this phone to re-link to your desktop/cloud vault?',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                     actions: [
                       TextButton(
@@ -159,7 +217,7 @@ class _VaultViewState extends ConsumerState<VaultView> {
                         child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
                       ),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE11D48)),
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF43F5E)),
                         onPressed: () => Navigator.pop(ctx, true),
                         child: const Text('Re-link', style: TextStyle(color: Colors.white)),
                       ),
@@ -176,9 +234,9 @@ class _VaultViewState extends ConsumerState<VaultView> {
                 value: 'sync',
                 child: Row(
                   children: [
-                    Icon(Icons.sync_rounded, color: Color(0xFF6366F1), size: 18),
+                    Icon(Icons.sync_rounded, color: Color(0xFF10B981), size: 16),
                     SizedBox(width: 10),
-                    Text('Sync Now', style: TextStyle(color: Colors.white)),
+                    Text('Sync Now', style: TextStyle(color: Colors.white, fontSize: 13)),
                   ],
                 ),
               ),
@@ -186,9 +244,9 @@ class _VaultViewState extends ConsumerState<VaultView> {
                 value: 'lock',
                 child: Row(
                   children: [
-                    Icon(Icons.lock_clock_rounded, color: Colors.white70, size: 18),
+                    Icon(Icons.lock_clock_rounded, color: Colors.white70, size: 16),
                     SizedBox(width: 10),
-                    Text('Lock Vault', style: TextStyle(color: Colors.white)),
+                    Text('Lock Vault', style: TextStyle(color: Colors.white, fontSize: 13)),
                   ],
                 ),
               ),
@@ -196,9 +254,9 @@ class _VaultViewState extends ConsumerState<VaultView> {
                 value: 'relink',
                 child: Row(
                   children: [
-                    Icon(Icons.refresh_rounded, color: Color(0xFFF43F5E), size: 18),
+                    Icon(Icons.refresh_rounded, color: Color(0xFFF43F5E), size: 16),
                     SizedBox(width: 10),
-                    Text('Re-link Account', style: TextStyle(color: Color(0xFFF43F5E))),
+                    Text('Re-link Account', style: TextStyle(color: Color(0xFFF43F5E), fontSize: 13)),
                   ],
                 ),
               ),
@@ -208,59 +266,92 @@ class _VaultViewState extends ConsumerState<VaultView> {
       ),
       body: Column(
         children: [
-          // Search & Filters Header
+          // Search & Filter Header
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            color: const Color(0xFF0F172A),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+            color: const Color(0xFF0C0D0E),
             child: Column(
               children: [
                 // Search Input
                 TextField(
                   onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'Search vault...',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Colors.white54, size: 18),
+                    hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF71717A), size: 16),
                     filled: true,
-                    fillColor: const Color(0xFF020817),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    fillColor: const Color(0xFF121316),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF1E293B)),
+                      borderSide: const BorderSide(color: Color(0xFF27272A)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF27272A)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF10B981)),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
-                // Category Tabs
+                // Category Tabs with Passkeys
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('All', 'all', Icons.vpn_key_rounded),
-                      _buildFilterChip('Favorites', 'favorites', Icons.star_rounded),
-                      _buildFilterChip('Logins', 'logins', Icons.language_rounded),
-                      _buildFilterChip('Notes', 'notes', Icons.description_outlined),
+                      _buildFilterChip('All', 'all', Icons.key_rounded, count: vault.entries.length),
+                      _buildFilterChip('Favorites', 'favorites', Icons.star_rounded,
+                          count: vault.entries.where((e) => e.favorite).length),
+                      _buildFilterChip('Logins', 'logins', Icons.language_rounded,
+                          count: vault.entries.where((e) => e.password != null && e.password!.isNotEmpty).length),
+                      _buildFilterChip('Passkeys', 'passkeys', Icons.fingerprint_rounded,
+                          count: vault.entries.where((e) => e.tags.contains('passkey')).length),
+                      _buildFilterChip('Notes', 'notes', Icons.description_outlined,
+                          count: vault.entries.where((e) => e.notes != null && (e.password == null || e.password!.isEmpty)).length),
                       if (allTags.isNotEmpty) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         ...allTags.map((tag) => Padding(
                               padding: const EdgeInsets.only(right: 6),
                               child: FilterChip(
                                 label: Text('#$tag'),
                                 selected: _selectedTag == tag,
                                 onSelected: (sel) => setState(() => _selectedTag = sel ? tag : null),
-                                selectedColor: const Color(0xFF6366F1),
-                                backgroundColor: const Color(0xFF020817),
+                                selectedColor: const Color(0xFF10B981).withOpacity(0.2),
+                                backgroundColor: const Color(0xFF121316),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 labelStyle: TextStyle(
-                                  color: _selectedTag == tag ? Colors.white : Colors.white60,
-                                  fontSize: 12,
+                                  color: _selectedTag == tag ? const Color(0xFF10B981) : Colors.white60,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
                             )),
                       ],
                     ],
                   ),
+                ),
+              ],
+            ),
+          ),
+
+          // Count Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _filter.toUpperCase(),
+                  style: const TextStyle(color: Color(0xFF71717A), fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${filtered.length} items',
+                  style: const TextStyle(color: Color(0xFF71717A), fontSize: 10, fontFamily: 'monospace'),
                 ),
               ],
             ),
@@ -273,19 +364,19 @@ class _VaultViewState extends ConsumerState<VaultView> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.folder_open_rounded, color: Colors.white.withOpacity(0.2), size: 48),
-                        const SizedBox(height: 12),
+                        Icon(Icons.folder_open_rounded, color: Colors.white.withOpacity(0.2), size: 44),
+                        const SizedBox(height: 10),
                         Text(
                           _searchQuery.isNotEmpty
                               ? 'No entries match "$_searchQuery"'
                               : 'No items in this category',
-                          style: const TextStyle(color: Colors.white54, fontSize: 14),
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
                     itemCount: filtered.length,
                     itemBuilder: (ctx, index) {
                       final item = filtered[index];
@@ -296,21 +387,27 @@ class _VaultViewState extends ConsumerState<VaultView> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF6366F1),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF09090B),
         onPressed: () => _openEditor(),
         tooltip: 'Add Entry',
-        child: const Icon(Icons.add_rounded, color: Colors.white),
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, size: 26),
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String value, IconData icon) {
+  Widget _buildFilterChip(String label, String value, IconData icon, {int? count}) {
     final isSelected = _filter == value && _selectedTag == null;
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: FilterChip(
-        avatar: Icon(icon, size: 14, color: isSelected ? Colors.white : Colors.white60),
-        label: Text(label),
+        avatar: Icon(
+          icon,
+          size: 13,
+          color: isSelected ? const Color(0xFF10B981) : Colors.white54,
+        ),
+        label: Text(count != null ? '$label ($count)' : label),
         selected: isSelected,
         onSelected: (_) {
           setState(() {
@@ -318,49 +415,60 @@ class _VaultViewState extends ConsumerState<VaultView> {
             _selectedTag = null;
           });
         },
-        selectedColor: const Color(0xFF6366F1),
-        backgroundColor: const Color(0xFF020817),
+        selectedColor: const Color(0xFF10B981).withOpacity(0.15),
+        backgroundColor: const Color(0xFF121316),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: isSelected ? const Color(0xFF10B981).withOpacity(0.4) : const Color(0xFF27272A),
+          ),
+        ),
         labelStyle: TextStyle(
           color: isSelected ? Colors.white : Colors.white60,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          fontSize: 12,
+          fontSize: 11,
         ),
       ),
     );
   }
 
   Widget _buildEntryCard(VaultEntry item) {
-    return Card(
-      color: const Color(0xFF0F172A),
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
+    final isUserCopied = _copiedKey == '${item.id}-user';
+    final isPassCopied = _copiedKey == '${item.id}-pass';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121316),
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFF1E293B)),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _openEditor(item),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              // Icon Badge
+              // Brand Favicon / Monogram
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.15),
+                  color: const Color(0xFF18181B),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
                 ),
-                child: Icon(
-                  item.password != null ? Icons.language_rounded : Icons.description_outlined,
-                  color: const Color(0xFF818CF8),
-                  size: 20,
+                alignment: Alignment.center,
+                child: ServiceIcon(
+                  title: item.title,
+                  url: item.url,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
 
-              // Title and Username
+              // Title and Username/Email
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,52 +481,65 @@ class _VaultViewState extends ConsumerState<VaultView> {
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontSize: 14,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (item.favorite)
-                          const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                          const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                       ],
                     ),
-                    if (item.username != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        item.username!,
-                        style: const TextStyle(color: Colors.white60, fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 2),
+                    Text(
+                      item.username ?? item.url ?? 'No username',
+                      style: const TextStyle(
+                        color: Color(0xFFA1A1AA),
+                        fontSize: 11,
+                        fontFamily: 'monospace',
                       ),
-                    ],
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
 
-              // Actions: Copy Username & Password
+              // Quick Copy Action Buttons directly on card
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (item.username != null)
-                    IconButton(
-                      icon: const Icon(Icons.person_outline_rounded, color: Colors.white54, size: 18),
-                      tooltip: 'Copy Username',
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: item.username!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Username copied'), duration: Duration(seconds: 1)),
-                        );
-                      },
+                  if (item.username != null && item.username!.isNotEmpty)
+                    InkWell(
+                      onTap: () => _copyToClipboard(item.username!, '${item.id}-user', 'Username'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181B),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white.withOpacity(0.06)),
+                        ),
+                        child: isUserCopied
+                            ? const Icon(Icons.check_rounded, color: Color(0xFF10B981), size: 14)
+                            : const Text('User', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
                     ),
-                  if (item.password != null)
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, color: Color(0xFF6366F1), size: 18),
-                      tooltip: 'Copy Password',
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: item.password!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Password copied'), duration: Duration(seconds: 1)),
-                        );
-                      },
+                  if (item.password != null && item.password!.isNotEmpty)
+                    InkWell(
+                      onTap: () => _copyToClipboard(item.password!, '${item.id}-pass', 'Password'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181B),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                        ),
+                        child: isPassCopied
+                            ? const Icon(Icons.check_rounded, color: Color(0xFF10B981), size: 14)
+                            : const Text('Pass', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
                     ),
                 ],
               ),
@@ -432,17 +553,17 @@ class _VaultViewState extends ConsumerState<VaultView> {
   Widget _buildSyncIcon(SyncStatus status) {
     switch (status) {
       case SyncStatus.synced:
-        return const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 14);
+        return const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 12);
       case SyncStatus.syncing:
         return const SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
+          width: 10,
+          height: 10,
+          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF10B981)),
         );
       case SyncStatus.error:
-        return const Icon(Icons.error_outline_rounded, color: Color(0xFFF43F5E), size: 14);
+        return const Icon(Icons.error_outline_rounded, color: Color(0xFFF43F5E), size: 12);
       case SyncStatus.offline:
-        return const Icon(Icons.cloud_off_rounded, color: Color(0xFFF59E0B), size: 14);
+        return const Icon(Icons.cloud_off_rounded, color: Color(0xFFF59E0B), size: 12);
     }
   }
 
@@ -451,11 +572,11 @@ class _VaultViewState extends ConsumerState<VaultView> {
       case SyncStatus.synced:
         return 'Synced';
       case SyncStatus.syncing:
-        return 'Syncing...';
+        return 'Syncing';
       case SyncStatus.error:
-        return 'Sync Error';
+        return 'Error';
       case SyncStatus.offline:
-        return 'Local-first';
+        return 'Local';
     }
   }
 
@@ -464,7 +585,7 @@ class _VaultViewState extends ConsumerState<VaultView> {
       case SyncStatus.synced:
         return const Color(0xFF10B981);
       case SyncStatus.syncing:
-        return const Color(0xFF6366F1);
+        return const Color(0xFF38BDF8);
       case SyncStatus.error:
         return const Color(0xFFF43F5E);
       case SyncStatus.offline:

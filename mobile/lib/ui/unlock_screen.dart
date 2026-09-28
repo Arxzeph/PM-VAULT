@@ -17,9 +17,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final _passwordController = TextEditingController();
   final _manualSaltController = TextEditingController();
   bool _obscure = true;
-  bool _showAdvancedSalt = false;
   String? _localError;
   bool _canCheckBiometrics = false;
+  String _mode = 'unlock'; // 'unlock', 'connect', 'create'
 
   @override
   void initState() {
@@ -110,11 +110,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F172A),
-        title: const Text('Re-link Vault?', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF121316),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFF27272A)),
+        ),
+        title: const Text('Reset Local Database?', style: TextStyle(color: Colors.white, fontSize: 16)),
         content: const Text(
-          'This will clear the local cache on this phone so you can re-link to your cloud vault. Cloud data in Supabase will NOT be deleted.',
-          style: TextStyle(color: Colors.white70),
+          'DANGER: This will delete your local encrypted database from this phone. You can reconnect it if you know your Master Password.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -122,9 +126,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE11D48)),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF43F5E)),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Clear & Re-link', style: TextStyle(color: Colors.white)),
+            child: const Text('Reset', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -145,286 +149,425 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final isInit = vault.isInitialized;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF020817),
+      backgroundColor: const Color(0xFF09090B),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // App Logo
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF06B6D4)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Lock Icon with Passkey / Biometric Badge
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF18181B),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.white.withOpacity(0.08)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF10B981).withOpacity(0.12),
+                              blurRadius: 20,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.lock_rounded, color: Color(0xFF10B981), size: 28),
+                      ),
+                      // Passkey Badge
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF09090B),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5)),
+                        ),
+                        child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981), size: 14),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.lock_rounded, color: Colors.white, size: 32),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                // Title
-                const Text(
-                  'PM Vault',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  isInit
-                      ? 'Your vault is locked. Enter master password.'
-                      : 'Zero-Knowledge Personal Password Manager',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: Colors.white60),
-                ),
-                const SizedBox(height: 28),
-
-                // Error Message
-                if (_localError != null || vault.errorMessage != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 20),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE11D48).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE11D48).withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.shield_outlined, color: Color(0xFFF43F5E), size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            _localError ?? vault.errorMessage!,
-                            style: const TextStyle(color: Color(0xFFFDA4AF), fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Card Form
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF1E293B)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  // Title
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (!isInit) ...[
-                        TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Account Email',
-                            hintText: 'your.email@example.com',
-                            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                            labelStyle: const TextStyle(color: Colors.white60, fontSize: 13),
-                            prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF6366F1), size: 18),
-                            filled: true,
-                            fillColor: const Color(0xFF020817),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E293B)),
-                            ),
-                          ),
+                      const Text(
+                        'PM Vault',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
                         ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      if (isInit && vault.email != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF020817),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFF1E293B)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.email_outlined, color: Colors.white54, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  vault.email!,
-                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
                         ),
-
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscure,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        textCapitalization: TextCapitalization.none,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: 'Master Password',
-                          labelStyle: const TextStyle(color: Colors.white60, fontSize: 13),
-                          prefixIcon: const Icon(Icons.vpn_key_rounded, color: Color(0xFF6366F1), size: 18),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                              color: Colors.white54,
-                              size: 18,
-                            ),
-                            onPressed: () => setState(() => _obscure = !_obscure),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFF020817),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF1E293B)),
+                        child: const Text(
+                          'Zero-Knowledge',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isInit
+                        ? 'Vault locked · Enter master password'
+                        : 'Local-first encrypted password manager',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Colors.white54),
+                  ),
+                  const SizedBox(height: 24),
 
-                      if (!isInit) ...[
-                        InkWell(
-                          onTap: () => setState(() => _showAdvancedSalt = !_showAdvancedSalt),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _showAdvancedSalt ? Icons.expand_less : Icons.expand_more,
-                                color: const Color(0xFF6366F1),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Advanced: Master Salt',
-                                style: TextStyle(color: Color(0xFF6366F1), fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_showAdvancedSalt) ...[
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _manualSaltController,
-                            style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 12),
-                            decoration: InputDecoration(
-                              labelText: 'Master Salt',
-                              labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
-                              helperText: 'Auto-detected from cloud. Only modify if offline or custom.',
-                              helperStyle: const TextStyle(color: Colors.white38, fontSize: 11),
-                              filled: true,
-                              fillColor: const Color(0xFF020817),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFF1E293B)),
-                              ),
+                  // Error Message
+                  if (_localError != null || vault.errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF43F5E).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF43F5E).withOpacity(0.25)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.shield_outlined, color: Color(0xFFF43F5E), size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _localError ?? vault.errorMessage!,
+                              style: const TextStyle(color: Color(0xFFFDA4AF), fontSize: 12),
                             ),
                           ),
                         ],
-                        const SizedBox(height: 16),
-                      ],
-
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          elevation: 4,
-                        ),
-                        onPressed: vault.isLoading
-                            ? null
-                            : (isInit ? _handleUnlock : _handleLoginOrInit),
-                        child: vault.isLoading
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SpinKitThreeBounce(color: Colors.white, size: 18),
-                                  SizedBox(width: 10),
-                                  Text('Deriving Argon2id Key...', style: TextStyle(color: Colors.white)),
-                                ],
-                              )
-                            : Text(
-                                isInit ? 'Unlock Vault' : 'Connect & Sync Vault',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
                       ),
+                    ),
 
-                      // Biometric Unlock Button
-                      if (isInit && _canCheckBiometrics && vault.hasBiometricKey) ...[
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF6366F1)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: _handleBiometricUnlock,
-                          icon: const Icon(Icons.fingerprint_rounded, color: Color(0xFF6366F1), size: 20),
-                          label: const Text(
-                            'Unlock with Fingerprint',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
+                  // Main Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121316),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: isInit ? _buildUnlockForm(vault) : _buildInitForm(vault),
+                  ),
 
-                      if (isInit) ...[
-                        const SizedBox(height: 14),
-                        TextButton(
-                          onPressed: _handleResetVault,
-                          child: const Text(
-                            'Re-link Account / Reset Local Data',
-                            style: TextStyle(color: Colors.white38, fontSize: 12),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 20),
+
+                  // Client-Side Crypto Security Footer
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.shield_outlined, color: Color(0xFF10B981), size: 14),
+                      SizedBox(width: 6),
+                      Text(
+                        'Argon2id · XChaCha20-Poly1305 · SQLCipher',
+                        style: TextStyle(color: Colors.white38, fontSize: 10, fontFamily: 'monospace'),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-
-                // Footer Guarantee
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.verified_user_rounded, color: Color(0xFF10B981), size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      'Client-Side Argon2id & XChaCha20-Poly1305',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildUnlockForm(VaultState vault) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (vault.email != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0C0D10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF27272A)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.account_circle_outlined, color: Colors.white54, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    vault.email!,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'monospace'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+
+        // Master Password Input
+        TextFormField(
+          controller: _passwordController,
+          obscureText: _obscure,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+          decoration: InputDecoration(
+            hintText: 'Master Password',
+            hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
+            filled: true,
+            fillColor: const Color(0xFF0C0D10),
+            prefixIcon: const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                color: Colors.white38,
+                size: 16,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF27272A)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF27272A)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF10B981)),
+            ),
+          ),
+          onFieldSubmitted: (_) => _handleUnlock(),
+        ),
+        const SizedBox(height: 16),
+
+        // Unlock Button
+        SizedBox(
+          height: 44,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF09090B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+            onPressed: vault.isLoading ? null : _handleUnlock,
+            child: vault.isLoading
+                ? const SpinKitThreeBounce(color: Colors.black, size: 18)
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Unlock Vault', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded, size: 16),
+                    ],
+                  ),
+          ),
+        ),
+
+        // Biometric Unlock Button
+        if (_canCheckBiometrics) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 42,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFF27272A)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981), size: 18),
+              label: const Text('Unlock with Biometrics', style: TextStyle(fontSize: 12)),
+              onPressed: _handleBiometricUnlock,
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            onPressed: _handleResetVault,
+            child: const Text(
+              'Reset local vault database',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInitForm(VaultState vault) {
+    final isConnect = _mode != 'create';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Mode Selector
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0C0D10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF27272A)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _mode = 'connect'),
+                  borderRadius: BorderRadius.circular(9),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isConnect ? const Color(0xFF27272A) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Sync Existing',
+                      style: TextStyle(
+                        color: isConnect ? Colors.white : Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _mode = 'create'),
+                  borderRadius: BorderRadius.circular(9),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: !isConnect ? const Color(0xFF27272A) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Create New',
+                      style: TextStyle(
+                        color: !isConnect ? Colors.white : Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Email
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Account Email',
+            hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
+            filled: true,
+            fillColor: const Color(0xFF0C0D10),
+            prefixIcon: const Icon(Icons.email_outlined, color: Colors.white38, size: 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF27272A)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF27272A)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF10B981)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Password
+        TextFormField(
+          controller: _passwordController,
+          obscureText: _obscure,
+          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+          decoration: InputDecoration(
+            hintText: isConnect ? 'Master Password' : 'Set Master Password (min 8 chars)',
+            hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
+            filled: true,
+            fillColor: const Color(0xFF0C0D10),
+            prefixIcon: const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                color: Colors.white38,
+                size: 16,
+              ),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF27272A)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF27272A)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF10B981)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Action Button
+        SizedBox(
+          height: 44,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF09090B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
+            ),
+            onPressed: vault.isLoading ? null : _handleLoginOrInit,
+            child: vault.isLoading
+                ? const SpinKitThreeBounce(color: Colors.black, size: 18)
+                : Text(
+                    isConnect ? 'Connect & Decrypt Vault' : 'Create Encrypted Vault',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }

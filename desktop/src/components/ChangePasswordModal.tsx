@@ -72,23 +72,25 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 select-none">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-slate-100 relative">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
+      <div className="w-full max-w-md bg-[#121316] border border-white/[0.08] rounded-2xl p-6 shadow-2xl text-zinc-100 relative">
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
           <div className="flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-semibold text-base">Change Master Password</h3>
+            <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center">
+              <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+            </div>
+            <h3 className="font-semibold text-xs tracking-tight text-white">Change Master Password</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.04] transition"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {error && (
-          <div className="mt-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+          <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -96,18 +98,18 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         {success ? (
           <div className="py-8 text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-              <Check className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+              <Check className="w-5 h-5" />
             </div>
-            <h4 className="font-semibold text-white">Master Password Updated!</h4>
-            <p className="text-xs text-slate-400">
-              Your vault encryption keys have been safely re-encrypted.
+            <h4 className="font-semibold text-sm text-white">Master Password Updated</h4>
+            <p className="text-xs text-zinc-400">
+              Your vault encryption keys have been securely re-encrypted.
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                 Current Master Password
               </label>
               <input
@@ -117,12 +119,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                 New Master Password
               </label>
               <input
@@ -131,12 +133,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="At least 8 characters"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                 Confirm New Master Password
               </label>
               <input
@@ -145,27 +147,27 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter new password"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
               />
             </div>
 
-            <div className="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-[11px] text-indigo-300/80 leading-relaxed">
-              <ShieldCheck className="w-4 h-4 text-indigo-400 inline mr-1 -mt-0.5" />
-              Only the 32-byte encryption key is re-encrypted. Your passwords stay safe and do not need re-encryption.
+            <div className="p-3 bg-zinc-900/60 border border-white/[0.06] rounded-xl text-[11px] text-zinc-400 leading-relaxed">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 inline mr-1 -mt-0.5" />
+              Only the 32-byte data encryption key is re-wrapped. Your saved passwords remain intact.
             </div>
 
             <div className="pt-2 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.04] transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition shadow-md shadow-indigo-600/20 flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-1.5 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
               >
                 {loading ? (
                   <>

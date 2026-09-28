@@ -12,6 +12,7 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
 } from "lucide-react";
 
 interface UnlockScreenProps {
@@ -103,20 +104,16 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
       );
 
       onUnlocked();
-    } catch (err: unknown) {
-      console.error("[Connect] Error:", err);
-      setError(
-        typeof err === "string"
-          ? err
-          : (err as Error).message || "Failed to connect to vault."
-      );
+    } catch (err: any) {
+      console.error("Connect failed:", err);
+      setError(err?.message || "Failed to connect to existing vault. Please verify your password.");
     } finally {
       setLoading(false);
       setStatusMessage(null);
     }
   };
 
-  // Create a brand new vault
+  // Initialize a brand new vault
   const handleInit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -138,114 +135,116 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
 
     setLoading(true);
     try {
-      setStatusMessage("Generating cryptographic keys (Argon2id + DEK)...");
-      const res = await api.initVault(cleanEmail, password);
-
-      setStatusMessage("Syncing metadata with cloud...");
-      try {
-        const authRes = await supabaseService.signUpOrSignIn(cleanEmail, res.auth_verifier);
-        if (authRes.user) {
-          await supabaseService.saveRemoteVaultMeta(
-            authRes.user.id,
-            res.master_salt,
-            res.encrypted_dek,
-            res.dek_nonce
-          );
-        }
-      } catch (authErr) {
-        console.warn("Supabase auth sync skipped/failed:", authErr);
+      setStatusMessage("Checking if account already exists...");
+      const existingSalt = await supabaseService.fetchUserSalt(cleanEmail);
+      if (existingSalt) {
+        throw new Error(
+          "An encrypted vault already exists for this email! Please click 'Sync Existing' instead."
+        );
       }
 
-      onUnlocked();
-    } catch (err: unknown) {
-      setError(
-        typeof err === "string" ? err : (err as Error).message || "Failed to initialize vault"
+      setStatusMessage("Generating cryptographic keys (Argon2id + ChaCha20)...");
+      const initRes = await api.initVault(cleanEmail, password);
+
+      setStatusMessage("Registering zero-knowledge cloud account...");
+      const authRes = await supabaseService.signUpOrSignIn(
+        cleanEmail,
+        initRes.auth_verifier
       );
+      if (!authRes.user) {
+        throw new Error("Failed to register user in Supabase cloud.");
+      }
+
+      setStatusMessage("Uploading encrypted metadata...");
+      await supabaseService.upsertVaultMetadata({
+        user_id: authRes.user.id,
+        user_email: cleanEmail,
+        salt: initRes.salt,
+        encrypted_dek: initRes.encrypted_dek,
+        dek_nonce: initRes.dek_nonce,
+      });
+
+      onUnlocked();
+    } catch (err: any) {
+      console.error("Init failed:", err);
+      setError(err?.message || "Failed to initialize vault.");
     } finally {
       setLoading(false);
       setStatusMessage(null);
     }
   };
 
-  // Standard unlock for already-initialized vault
+  // Unlock existing initialized local database
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!password) {
-      setError("Please enter your master password.");
-      return;
-    }
+    if (!password) return;
 
     setLoading(true);
+    setError(null);
+
     try {
-      const res = await api.unlockVault(password);
-
-      // Connect to Supabase and ensure metadata is stored in cloud
-      if (res.email && res.auth_verifier) {
-        try {
-          const authRes = await supabaseService.signUpOrSignIn(res.email, res.auth_verifier);
-          if (authRes.user) {
-            await supabaseService.saveRemoteVaultMeta(
-              authRes.user.id,
-              res.master_salt,
-              res.encrypted_dek,
-              res.dek_nonce
-            );
+      const success = await api.unlockVault(password);
+      if (success) {
+        // Authenticate background Supabase session if email exists
+        if (savedEmail) {
+          try {
+            const creds = await api.getSessionCredentials();
+            if (creds && creds.auth_verifier) {
+              await supabaseService.signUpOrSignIn(savedEmail, creds.auth_verifier);
+            }
+          } catch (cloudErr) {
+            console.warn("Background cloud sign-in warning:", cloudErr);
           }
-        } catch (authErr) {
-          console.warn("[UnlockScreen] Supabase auth/metadata sync warning:", authErr);
         }
+        onUnlocked();
+      } else {
+        setError("Incorrect master password. Please try again.");
       }
-
-      onUnlocked();
-    } catch (err: unknown) {
-      setError(typeof err === "string" ? err : "Incorrect master password. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Failed to unlock vault.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleResetVault = async () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to reset your local vault? This will delete local encrypted data so you can set a brand new master password."
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    try {
-      await api.resetVault();
-      window.location.reload();
-    } catch {
-      setError("Failed to reset vault.");
-    } finally {
-      setLoading(false);
+    if (
+      window.confirm(
+        "DANGER: This will delete your local vault database from this computer. You can reconnect it if you remember your Master Password. Continue?"
+      )
+    ) {
+      try {
+        await api.resetVault();
+        window.location.reload();
+      } catch (err: any) {
+        setError("Failed to reset local database: " + err?.message);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-100 select-none">
-      {/* Decorative background glow */}
-      <div className="absolute w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none -top-20" />
-      <div className="absolute w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none -bottom-20" />
+    <div className="min-h-screen w-screen bg-[#09090b] flex flex-col items-center justify-center p-4 selection:bg-zinc-800 selection:text-emerald-300">
+      {/* Decorative radial glow */}
+      <div className="absolute top-1/3 w-96 h-96 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl relative z-10">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 shadow-lg shadow-indigo-500/20 mb-4">
-            <Lock className="w-7 h-7 text-white" />
+      <div className="w-full max-w-md bg-[#121316] border border-white/[0.08] rounded-2xl p-7 shadow-2xl relative z-10 backdrop-blur-xl">
+        {/* Header Branding */}
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center mb-3 shadow-inner">
+            <Lock className="w-5 h-5 text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">PM Vault</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-lg font-semibold tracking-tight text-white">PM Vault</h1>
+          <p className="text-xs text-zinc-500 mt-1 font-mono">
             {isInitialized
-              ? "Your vault is locked. Enter master password."
-              : "Zero-Knowledge Personal Password Manager"}
+              ? "Vault locked · Enter master password"
+              : "Zero-Knowledge Personal Vault"}
           </p>
         </div>
 
         {error && (
-          <div className="mb-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5">
+          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5">
             <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
@@ -253,42 +252,40 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
           /* ================= ALREADY INITIALIZED (UNLOCK VIEW) ================= */
           <form onSubmit={handleUnlock} className="space-y-4">
             {savedEmail && (
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-slate-500" />
-                <span className="truncate">{savedEmail}</span>
+              <div className="p-2.5 rounded-xl bg-[#0c0d10] border border-white/[0.06] text-xs text-zinc-300 flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="truncate font-mono text-[11px]">{savedEmail}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                 Master Password
               </label>
-              <div className="relative">
-                <input
-                  type="password"
-                  autoFocus
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••••••"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
-                />
-              </div>
+              <input
+                type="password"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••••••"
+                className="w-full px-3.5 py-2.5 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
+              />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
+              className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Deriving Argon2id Key...</span>
                 </>
               ) : (
                 <>
                   <span>Unlock Vault</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
@@ -297,27 +294,27 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
               <button
                 type="button"
                 onClick={handleResetVault}
-                className="text-xs text-slate-500 hover:text-rose-400 transition"
+                className="text-[11px] text-zinc-500 hover:text-rose-400 transition"
               >
-                Forgot Master Password? Reset Vault
+                Reset local vault cache
               </button>
             </div>
           </form>
         ) : (
           /* ================= UNINITIALIZED (FIRST RUN ON NEW PC) ================= */
-          <div className="space-y-5">
-            {/* Mode Selector Tabs */}
-            <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium">
+          <div className="space-y-4">
+            {/* Raycast Segmented Control */}
+            <div className="grid grid-cols-2 p-1 bg-[#0c0d10] border border-white/[0.06] rounded-xl text-xs font-medium">
               <button
                 type="button"
                 onClick={() => {
                   setInitMode("connect");
                   setError(null);
                 }}
-                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition ${
+                className={`py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition text-[11px] ${
                   initMode === "connect"
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08]"
+                    : "text-zinc-400 hover:text-zinc-200 border border-transparent"
                 }`}
               >
                 <CloudDownload className="w-3.5 h-3.5" />
@@ -329,10 +326,10 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   setInitMode("create");
                   setError(null);
                 }}
-                className={`py-2 rounded-lg flex items-center justify-center gap-1.5 transition ${
+                className={`py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition text-[11px] ${
                   initMode === "create"
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-zinc-800 text-white shadow-sm border border-white/[0.08]"
+                    : "text-zinc-400 hover:text-zinc-200 border border-transparent"
                 }`}
               >
                 <PlusCircle className="w-3.5 h-3.5" />
@@ -342,9 +339,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
 
             {initMode === "connect" ? (
               /* CONNECT EXISTING FORM */
-              <form onSubmit={handleConnect} className="space-y-4">
+              <form onSubmit={handleConnect} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                     Account Email
                   </label>
                   <input
@@ -353,12 +350,12 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your.email@example.com"
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
+                    className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                     Master Password
                   </label>
                   <input
@@ -366,8 +363,8 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your master password"
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
+                    placeholder="Enter master password"
+                    className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
                   />
                 </div>
 
@@ -376,7 +373,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAdvancedSalt(!showAdvancedSalt)}
-                    className="text-[11px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
+                    className="text-[10px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition"
                   >
                     <span>Advanced: Master Salt</span>
                     {showAdvancedSalt ? (
@@ -387,38 +384,38 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   </button>
 
                   {showAdvancedSalt && (
-                    <div className="mt-2">
+                    <div className="mt-1.5">
                       <input
                         type="text"
                         value={manualSalt}
                         onChange={(e) => setManualSalt(e.target.value)}
                         placeholder="Base64 Salt"
-                        className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-1.5 bg-[#0c0d10] border border-white/[0.08] rounded-lg text-xs font-mono text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
                       />
-                      <p className="text-[10px] text-slate-500 mt-1">
+                      <p className="text-[10px] text-zinc-500 mt-1">
                         Auto-detected from cloud. Only modify if offline or using a custom salt.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-[11px] text-indigo-300/80 leading-relaxed">
-                  <span className="font-semibold text-indigo-200">New Device Sync:</span> Logging in on this PC will securely import your encrypted vault and sync all passwords in real-time.
+                <div className="p-3 bg-zinc-900/60 border border-white/[0.06] rounded-xl text-[11px] text-zinc-400 leading-relaxed">
+                  <span className="font-semibold text-zinc-200">Device Sync:</span> Logging in imports your encrypted vault and syncs all passwords in real-time.
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
+                  className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>{statusMessage || "Connecting..."}</span>
                     </>
                   ) : (
                     <>
-                      <CloudDownload className="w-4 h-4" />
+                      <CloudDownload className="w-3.5 h-3.5" />
                       <span>Connect & Sync Vault</span>
                     </>
                   )}
@@ -426,9 +423,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
               </form>
             ) : (
               /* CREATE NEW VAULT FORM */
-              <form onSubmit={handleInit} className="space-y-4">
+              <form onSubmit={handleInit} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                     Account Email
                   </label>
                   <input
@@ -437,12 +434,12 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your.email@example.com"
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
+                    className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                     Master Password
                   </label>
                   <input
@@ -451,12 +448,12 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Choose a strong master password"
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
+                    className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
                     Confirm Master Password
                   </label>
                   <input
@@ -465,27 +462,27 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter master password"
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
+                    className="w-full px-3 py-2 bg-[#0c0d10] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition"
                   />
                 </div>
 
-                <div className="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-[11px] text-indigo-300/80 leading-relaxed">
-                  <span className="font-semibold text-indigo-200">Zero-Knowledge Guarantee:</span> Your master password never leaves this device. A new random DEK and salt will be generated locally.
+                <div className="p-3 bg-zinc-900/60 border border-white/[0.06] rounded-xl text-[11px] text-zinc-400 leading-relaxed">
+                  <span className="font-semibold text-zinc-200">Zero-Knowledge:</span> Your password never leaves this device. A new random DEK and salt are generated locally.
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
+                  className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       <span>{statusMessage || "Creating Vault..."}</span>
                     </>
                   ) : (
                     <>
-                      <KeyRound className="w-4 h-4" />
+                      <KeyRound className="w-3.5 h-3.5" />
                       <span>Create Encrypted Vault</span>
                     </>
                   )}
@@ -496,9 +493,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
         )}
       </div>
 
-      <div className="mt-6 text-xs text-slate-500 flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-        <span>Local-first · Client-Side XChaCha20-Poly1305 · Argon2id</span>
+      <div className="mt-5 text-[11px] font-mono text-zinc-500 flex items-center gap-2">
+        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+        <span>Client-Side XChaCha20-Poly1305 · Argon2id</span>
       </div>
     </div>
   );

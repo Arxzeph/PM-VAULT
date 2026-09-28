@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../services/api";
-import { Copy, Check, RefreshCw, X, ShieldCheck } from "lucide-react";
+import { Copy, Check, RefreshCw, X, Sparkles } from "lucide-react";
 
 interface PasswordGeneratorProps {
   onSelectPassword?: (pwd: string) => void;
@@ -47,51 +47,53 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
   };
 
   const getStrength = () => {
-    if (length < 12) return { label: "Weak", color: "bg-rose-500", w: "w-1/4" };
-    if (length < 16) return { label: "Moderate", color: "bg-amber-500", w: "w-2/4" };
-    if (length < 24) return { label: "Strong", color: "bg-emerald-500", w: "w-3/4" };
-    return { label: "Very Strong", color: "bg-cyan-400", w: "w-full" };
+    if (length < 12) return { label: "Weak", color: "bg-rose-500", text: "text-rose-400" };
+    if (length < 16) return { label: "Fair", color: "bg-amber-500", text: "text-amber-400" };
+    if (length < 24) return { label: "Strong", color: "bg-emerald-500", text: "text-emerald-400" };
+    return { label: "Very Strong", color: "bg-emerald-400", text: "text-emerald-300" };
   };
 
   const strength = getStrength();
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl text-slate-100 w-full max-w-md">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div className="bg-[#121316] border border-white/[0.08] rounded-2xl p-5 shadow-2xl text-zinc-100 w-full max-w-md backdrop-blur-xl">
+      <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-indigo-400" />
-          <h3 className="font-semibold text-base">Password Generator</h3>
+          <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <h3 className="font-semibold text-xs tracking-tight text-white">Cryptographic Password Generator</h3>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.04] transition"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
       {/* Generated Password Display */}
-      <div className="mt-4 relative bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between font-mono text-sm break-all">
-        <span className="text-indigo-200 select-all pr-12">{password}</span>
+      <div className="mt-4 relative bg-[#0c0d10] border border-white/[0.08] rounded-xl p-3 flex items-center justify-between font-mono text-xs break-all">
+        <span className="text-zinc-100 select-all pr-14 tracking-wide">{password}</span>
         <div className="flex items-center gap-1 absolute right-2">
           <button
             onClick={generate}
-            title="Regenerate"
-            className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-indigo-400 transition"
+            title="Generate New Password"
+            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-zinc-400 hover:text-white transition"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={copyToClipboard}
             title="Copy Password"
-            className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition"
+            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-zinc-400 hover:text-emerald-400 transition"
           >
             {copied ? (
-              <Check className="w-4 h-4 text-emerald-400" />
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
             ) : (
-              <Copy className="w-4 h-4" />
+              <Copy className="w-3.5 h-3.5" />
             )}
           </button>
         </div>
@@ -99,21 +101,24 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
 
       {/* Strength indicator */}
       <div className="mt-3">
-        <div className="flex justify-between text-xs text-slate-400 mb-1">
-          <span>Security Score</span>
-          <span className="font-medium text-slate-300">{strength.label} ({length} chars)</span>
+        <div className="flex justify-between text-[11px] font-mono text-zinc-400 mb-1">
+          <span>Entropy</span>
+          <span className={`font-medium ${strength.text}`}>{strength.label} ({length} chars)</span>
         </div>
-        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-          <div className={`h-full transition-all duration-300 ${strength.color} ${strength.w}`} />
+        <div className="w-full bg-zinc-800 rounded-full h-1 overflow-hidden">
+          <div
+            className={`h-full transition-all duration-300 ${strength.color}`}
+            style={{ width: `${Math.min(100, (length / 32) * 100)}%` }}
+          />
         </div>
       </div>
 
       {/* Controls */}
-      <div className="mt-5 space-y-4">
+      <div className="mt-4 space-y-3.5">
         <div>
-          <div className="flex justify-between text-xs text-slate-400 mb-1">
-            <span>Length</span>
-            <span className="font-mono text-slate-200">{length}</span>
+          <div className="flex justify-between text-[11px] font-medium text-zinc-400 mb-1.5">
+            <span>Password Length</span>
+            <span className="font-mono text-white text-xs">{length}</span>
           </div>
           <input
             type="range"
@@ -121,66 +126,66 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
             max="64"
             value={length}
             onChange={(e) => setLength(parseInt(e.target.value))}
-            className="w-full accent-indigo-500 cursor-pointer"
+            className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg appearance-none"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <label className="flex items-center gap-2 cursor-pointer bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 hover:border-slate-700 transition">
+          <label className="flex items-center gap-2 cursor-pointer bg-[#0c0d10] p-2 rounded-xl border border-white/[0.06] hover:border-white/[0.12] transition">
             <input
               type="checkbox"
               checked={uppercase}
               onChange={(e) => setUppercase(e.target.checked)}
-              className="rounded accent-indigo-500"
+              className="rounded accent-emerald-500"
             />
-            <span>A-Z (Uppercase)</span>
+            <span className="text-[11px] text-zinc-300">A-Z (Uppercase)</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 hover:border-slate-700 transition">
+          <label className="flex items-center gap-2 cursor-pointer bg-[#0c0d10] p-2 rounded-xl border border-white/[0.06] hover:border-white/[0.12] transition">
             <input
               type="checkbox"
               checked={lowercase}
               onChange={(e) => setLowercase(e.target.checked)}
-              className="rounded accent-indigo-500"
+              className="rounded accent-emerald-500"
             />
-            <span>a-z (Lowercase)</span>
+            <span className="text-[11px] text-zinc-300">a-z (Lowercase)</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 hover:border-slate-700 transition">
+          <label className="flex items-center gap-2 cursor-pointer bg-[#0c0d10] p-2 rounded-xl border border-white/[0.06] hover:border-white/[0.12] transition">
             <input
               type="checkbox"
               checked={numbers}
               onChange={(e) => setNumbers(e.target.checked)}
-              className="rounded accent-indigo-500"
+              className="rounded accent-emerald-500"
             />
-            <span>0-9 (Numbers)</span>
+            <span className="text-[11px] text-zinc-300">0-9 (Numbers)</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 hover:border-slate-700 transition">
+          <label className="flex items-center gap-2 cursor-pointer bg-[#0c0d10] p-2 rounded-xl border border-white/[0.06] hover:border-white/[0.12] transition">
             <input
               type="checkbox"
               checked={symbols}
               onChange={(e) => setSymbols(e.target.checked)}
-              className="rounded accent-indigo-500"
+              className="rounded accent-emerald-500"
             />
-            <span>!@#$ (Symbols)</span>
+            <span className="text-[11px] text-zinc-300">!@#$ (Symbols)</span>
           </label>
         </div>
       </div>
 
       {onSelectPassword && (
-        <div className="mt-5 pt-3 border-t border-slate-800 flex justify-end gap-2">
+        <div className="mt-4 pt-3 border-t border-white/[0.06] flex justify-end gap-2">
           {onClose && (
             <button
               onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.04] transition"
             >
               Cancel
             </button>
           )}
           <button
             onClick={() => onSelectPassword(password)}
-            className="px-4 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-white text-zinc-950 transition flex items-center gap-1.5 shadow-sm"
           >
             <span>Use Password</span>
           </button>

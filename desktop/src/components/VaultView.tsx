@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { VaultEntry, SaveEntryInput } from "../types";
 import { EntryEditor } from "./EntryEditor";
 import { PasswordGenerator } from "./PasswordGenerator";
@@ -19,6 +20,7 @@ import {
   FolderOpen,
   RefreshCw,
   AlertCircle,
+  Fingerprint,
 } from "lucide-react";
 
 interface VaultViewProps {
@@ -45,13 +47,13 @@ export const VaultView: React.FC<VaultViewProps> = ({
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"all" | "favorites" | "logins" | "notes">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "favorites" | "logins" | "passkeys" | "notes">("all");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showGlobalGenerator, setShowGlobalGenerator] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcuts: Ctrl+K / Cmd+K to search, Ctrl+N to create, Esc to clear
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -83,18 +85,16 @@ export const VaultView: React.FC<VaultViewProps> = ({
     return Array.from(tagsSet).sort();
   }, [entries]);
 
-  // Filter entries based on category, tag, and search query
+  // Filter entries
   const filteredEntries = useMemo(() => {
     return entries.filter((e) => {
-      // 1. Category filter
       if (activeFilter === "favorites" && !e.favorite) return false;
       if (activeFilter === "logins" && !e.password) return false;
+      if (activeFilter === "passkeys" && !e.tags?.includes("passkey")) return false;
       if (activeFilter === "notes" && (!e.notes || e.password)) return false;
 
-      // 2. Tag filter
       if (selectedTag && !e.tags?.includes(selectedTag)) return false;
 
-      // 3. Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchTitle = e.title?.toLowerCase().includes(q);
@@ -133,9 +133,18 @@ export const VaultView: React.FC<VaultViewProps> = ({
     setSelectedEntryId(null);
   };
 
+  // Sidebar nav items config
+  const navItems = [
+    { key: "all" as const, label: "All Items", icon: KeyRound, iconColor: "text-zinc-400", count: entries.length },
+    { key: "favorites" as const, label: "Favorites", icon: Star, iconColor: "text-amber-400", count: entries.filter((e) => e.favorite).length },
+    { key: "logins" as const, label: "Logins", icon: Globe, iconColor: "text-zinc-400", count: entries.filter((e) => e.password).length },
+    { key: "passkeys" as const, label: "Passkeys", icon: Fingerprint, iconColor: "text-violet-400", count: entries.filter((e) => e.tags?.includes("passkey")).length },
+    { key: "notes" as const, label: "Secure Notes", icon: FileText, iconColor: "text-zinc-400", count: entries.filter((e) => e.notes && !e.password).length },
+  ];
+
   return (
     <div className="flex h-screen w-screen bg-[#09090b] text-zinc-100 select-none overflow-hidden font-sans">
-      {/* 1. Left Sidebar: Raycast Obsidian Style */}
+      {/* 1. Left Sidebar */}
       <aside className="w-60 bg-[#0c0d0e] border-r border-white/[0.06] flex flex-col justify-between shrink-0">
         <div>
           {/* App Branding */}
@@ -166,87 +175,36 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
           {/* Navigation Categories */}
           <nav className="p-2 space-y-0.5">
-            <button
-              onClick={() => {
-                setActiveFilter("all");
-                setSelectedTag(null);
-              }}
-              className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                activeFilter === "all" && !selectedTag
-                  ? "bg-white/[0.08] text-white shadow-sm border border-white/[0.06]"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <KeyRound className="w-3.5 h-3.5 text-zinc-400" />
-                <span>All Items</span>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-500">{entries.length}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveFilter("favorites");
-                setSelectedTag(null);
-              }}
-              className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                activeFilter === "favorites" && !selectedTag
-                  ? "bg-white/[0.08] text-white shadow-sm border border-white/[0.06]"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Star className="w-3.5 h-3.5 text-amber-400" />
-                <span>Favorites</span>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-500">
-                {entries.filter((e) => e.favorite).length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveFilter("logins");
-                setSelectedTag(null);
-              }}
-              className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                activeFilter === "logins" && !selectedTag
-                  ? "bg-white/[0.08] text-white shadow-sm border border-white/[0.06]"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Globe className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Logins</span>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-500">
-                {entries.filter((e) => e.password).length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveFilter("notes");
-                setSelectedTag(null);
-              }}
-              className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                activeFilter === "notes" && !selectedTag
-                  ? "bg-white/[0.08] text-white shadow-sm border border-white/[0.06]"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Secure Notes</span>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-500">
-                {entries.filter((e) => e.notes && !e.password).length}
-              </span>
-            </button>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeFilter === item.key && !selectedTag;
+              return (
+                <motion.button
+                  key={item.key}
+                  onClick={() => {
+                    setActiveFilter(item.key);
+                    setSelectedTag(null);
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
+                    isActive
+                      ? "bg-white/[0.08] text-white shadow-sm border border-white/[0.06]"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : item.iconColor}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500">{item.count}</span>
+                </motion.button>
+              );
+            })}
 
             {/* Quick Generator Trigger */}
             <div className="pt-2">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setShowGlobalGenerator(true)}
                 className="w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 bg-zinc-900/80 hover:bg-zinc-800/80 border border-white/[0.06] flex items-center justify-between transition group"
               >
@@ -255,7 +213,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
                   <span>Generator</span>
                 </div>
                 <span className="kbd-badge text-[9px]">Gen</span>
-              </button>
+              </motion.button>
             </div>
           </nav>
 
@@ -352,7 +310,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
       {/* 2. Middle Column: Vault Item List */}
       <section className="w-76 bg-[#09090b] border-r border-white/[0.06] flex flex-col shrink-0">
-        {/* Search Bar with Ctrl+K badge */}
+        {/* Search Bar */}
         <div className="p-2.5 border-b border-white/[0.06] flex items-center gap-1.5">
           <div className="relative flex-1">
             <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
@@ -369,16 +327,17 @@ export const VaultView: React.FC<VaultViewProps> = ({
             </div>
           </div>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={handleStartCreate}
             title="Create New Item (Ctrl+N)"
             className="p-1.5 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg transition shadow-sm shrink-0"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          </button>
+          </motion.button>
         </div>
 
-        {/* Counter & Category Label */}
+        {/* Counter */}
         <div className="px-3 py-1.5 flex items-center justify-between text-[11px] text-zinc-500 border-b border-white/[0.03]">
           <span className="uppercase tracking-wider font-mono text-[9px]">
             {activeFilter === "all" ? "All Entries" : activeFilter}
@@ -402,99 +361,179 @@ export const VaultView: React.FC<VaultViewProps> = ({
               )}
             </div>
           ) : (
-            filteredEntries.map((entry) => {
-              const isSelected = entry.id === selectedEntryId;
+            <AnimatePresence>
+              {filteredEntries.map((entry, index) => {
+                const isSelected = entry.id === selectedEntryId;
 
-              return (
-                <div
-                  key={entry.id}
-                  onClick={() => handleSelectEntry(entry.id)}
-                  className={`p-2 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 ${
-                    isSelected
-                      ? "bg-zinc-800/80 border border-zinc-700/60 text-white shadow-sm"
-                      : "hover:bg-zinc-900/60 border border-transparent text-zinc-300"
-                  }`}
-                >
-                  {/* Automatic Brand Favicon / Monogram */}
-                  <ServiceIcon title={entry.title} url={entry.url || undefined} size={18} />
+                return (
+                  <motion.div
+                    key={entry.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2, delay: index * 0.03 }}
+                    onClick={() => handleSelectEntry(entry.id)}
+                    className={`p-2 rounded-xl cursor-pointer transition-all flex items-center gap-2.5 ${
+                      isSelected
+                        ? "bg-zinc-800/80 border border-zinc-700/60 text-white shadow-sm"
+                        : "hover:bg-zinc-900/60 border border-transparent text-zinc-300"
+                    }`}
+                  >
+                    <ServiceIcon title={entry.title} url={entry.url || undefined} size={18} />
 
-                  {/* Text details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-medium text-xs truncate text-zinc-100 tracking-tight">
-                        {entry.title}
-                      </span>
-                      {entry.favorite && (
-                        <Star className="w-3 h-3 text-amber-400 fill-current shrink-0" />
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-medium text-xs truncate text-zinc-100 tracking-tight">
+                          {entry.title}
+                        </span>
+                        {entry.favorite && (
+                          <Star className="w-3 h-3 text-amber-400 fill-current shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-500 truncate mt-0.5 font-mono">
+                        {entry.username || entry.url || "No username"}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-zinc-500 truncate mt-0.5 font-mono">
-                      {entry.username || entry.url || "No username"}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           )}
         </div>
       </section>
 
-      {/* 3. Right Column: Raycast Minimalist Detail / Editor */}
+      {/* 3. Right Column: Detail Panel (only for viewing/editing existing entries) */}
       <main className="flex-1 bg-[#0c0d10] flex flex-col relative overflow-hidden">
-        {isCreating || selectedEntry ? (
-          <EntryEditor
-            entry={selectedEntry}
-            isCreating={isCreating}
-            onSave={handleSave}
-            onDelete={handleDelete}
-            onClose={() => {
-              setIsCreating(false);
-              setSelectedEntryId(null);
-            }}
-          />
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-zinc-500 p-8 text-center select-none">
-            {/* Subtle glow container */}
-            <div className="relative mb-5">
-              <div className="absolute inset-0 bg-emerald-500/10 blur-2xl rounded-full" />
-              <div className="relative w-16 h-16 rounded-2xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-zinc-400 shadow-xl">
-                <Shield className="w-7 h-7 text-emerald-400" strokeWidth={1.5} />
-              </div>
-            </div>
-
-            <h3 className="text-sm font-semibold text-zinc-200 tracking-tight">No Item Selected</h3>
-            <p className="text-xs text-zinc-500 max-w-sm mt-1.5 leading-relaxed">
-              Select an encrypted entry from the list to view credentials, or create a new password entry.
-            </p>
-
-            <button
-              onClick={handleStartCreate}
-              className="mt-5 px-3.5 py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-medium transition shadow-md flex items-center gap-2"
+        <AnimatePresence mode="wait">
+          {selectedEntry ? (
+            <motion.div
+              key="editor"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 30 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="h-full"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Create New Item</span>
-              <span className="kbd-badge text-[9px] bg-zinc-200 border-zinc-300 text-zinc-700 ml-1">Ctrl N</span>
-            </button>
-          </div>
-        )}
+              <EntryEditor
+                entry={selectedEntry}
+                isCreating={false}
+                onSave={handleSave}
+                onDelete={handleDelete}
+                onClose={() => setSelectedEntryId(null)}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="h-full flex flex-col items-center justify-center text-zinc-500 p-8 text-center select-none"
+            >
+              {/* Subtle glow */}
+              <div className="relative mb-5">
+                <div className="absolute inset-0 bg-emerald-500/10 blur-2xl rounded-full" />
+                <motion.div
+                  animate={{ rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative w-16 h-16 rounded-2xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-zinc-400 shadow-xl"
+                >
+                  <Shield className="w-7 h-7 text-emerald-400" strokeWidth={1.5} />
+                </motion.div>
+              </div>
 
-        {/* Global Password Generator Modal */}
+              <h3 className="text-sm font-semibold text-zinc-200 tracking-tight">Your Vault is Secure</h3>
+              <p className="text-xs text-zinc-500 max-w-xs mt-1.5 leading-relaxed">
+                Select an entry from the list or press <span className="kbd-badge text-[9px] mx-0.5">Ctrl N</span> to add a new credential.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* ============ CREATE NEW ITEM — Centered Floating Bubble Modal ============ */}
+      <AnimatePresence>
+        {isCreating && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="create-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-40"
+              onClick={() => setIsCreating(false)}
+            />
+
+            {/* Floating Bubble */}
+            <motion.div
+              key="create-bubble"
+              initial={{ opacity: 0, scale: 0.85, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 40 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none"
+            >
+              <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-[#121316] border border-white/[0.1] rounded-3xl shadow-2xl shadow-black/40 pointer-events-auto">
+                <EntryEditor
+                  entry={null}
+                  isCreating={true}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onClose={() => setIsCreating(false)}
+                />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Global Password Generator Modal */}
+      <AnimatePresence>
         {showGlobalGenerator && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <PasswordGenerator onClose={() => setShowGlobalGenerator(false)} />
-          </div>
+          <>
+            <motion.div
+              key="gen-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+              onClick={() => setShowGlobalGenerator(false)}
+            />
+            <motion.div
+              key="gen-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+            >
+              <div className="pointer-events-auto">
+                <PasswordGenerator onClose={() => setShowGlobalGenerator(false)} />
+              </div>
+            </motion.div>
+          </>
         )}
+      </AnimatePresence>
 
-        {/* Change Master Password Modal */}
+      {/* Change Master Password Modal */}
+      <AnimatePresence>
         {showChangePassword && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            key="chgpwd"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <ChangePasswordModal
               onClose={() => setShowChangePassword(false)}
               onSuccess={() => setShowChangePassword(false)}
             />
-          </div>
+          </motion.div>
         )}
-      </main>
+      </AnimatePresence>
     </div>
   );
 };

@@ -309,7 +309,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
       </aside>
 
       {/* 2. Middle Column: Vault Item List */}
-      <section className="w-76 bg-[#09090b] border-r border-white/[0.06] flex flex-col shrink-0">
+      <section className={`bg-[#09090b] border-r border-white/[0.06] flex flex-col shrink-0 transition-all duration-300 ${selectedEntry ? 'w-76' : 'flex-1'}`}>
         {/* Search Bar */}
         <div className="p-2.5 border-b border-white/[0.06] flex items-center gap-1.5">
           <div className="relative flex-1">
@@ -402,55 +402,27 @@ export const VaultView: React.FC<VaultViewProps> = ({
         </div>
       </section>
 
-      {/* 3. Right Column: Detail Panel (only for viewing/editing existing entries) */}
-      <main className="flex-1 bg-[#0c0d10] flex flex-col relative overflow-hidden">
-        <AnimatePresence mode="wait">
-          {selectedEntry ? (
-            <motion.div
-              key="editor"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 30 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="h-full"
-            >
-              <EntryEditor
-                entry={selectedEntry}
-                isCreating={false}
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onClose={() => setSelectedEntryId(null)}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="h-full flex flex-col items-center justify-center text-zinc-500 p-8 text-center select-none"
-            >
-              {/* Subtle glow */}
-              <div className="relative mb-5">
-                <div className="absolute inset-0 bg-emerald-500/10 blur-2xl rounded-full" />
-                <motion.div
-                  animate={{ rotate: [0, 5, -5, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="relative w-16 h-16 rounded-2xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-zinc-400 shadow-xl"
-                >
-                  <Shield className="w-7 h-7 text-emerald-400" strokeWidth={1.5} />
-                </motion.div>
-              </div>
-
-              <h3 className="text-sm font-semibold text-zinc-200 tracking-tight">Your Vault is Secure</h3>
-              <p className="text-xs text-zinc-500 max-w-xs mt-1.5 leading-relaxed">
-                Select an entry from the list or press <span className="kbd-badge text-[9px] mx-0.5">Ctrl N</span> to add a new credential.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+      {/* 3. Right Column: Only renders when an entry is selected */}
+      <AnimatePresence>
+        {selectedEntry && (
+          <motion.main
+            key="detail-panel"
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: "auto" }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex-1 bg-[#0c0d10] flex flex-col relative overflow-hidden min-w-[340px]"
+          >
+            <EntryEditor
+              entry={selectedEntry}
+              isCreating={false}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onClose={() => setSelectedEntryId(null)}
+            />
+          </motion.main>
+        )}
+      </AnimatePresence>
 
       {/* ============ CREATE NEW ITEM — Centered Floating Bubble Modal ============ */}
       <AnimatePresence>

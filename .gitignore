@@ -10,6 +10,7 @@ build/
 *.apk
 *.msi
 *.deb
+!PM_0.1.0_amd64.deb
 *.AppImage
 *.db
 *.zip

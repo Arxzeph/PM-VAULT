@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { VaultEntry, SaveEntryInput } from "../types";
 import { EntryEditor } from "./EntryEditor";
 import { PasswordGenerator } from "./PasswordGenerator";

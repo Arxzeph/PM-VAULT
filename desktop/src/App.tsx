@@ -6,6 +6,7 @@ import { VaultStatus, VaultEntry, SaveEntryInput } from "./types";
 import { UnlockScreen } from "./components/UnlockScreen";
 import { VaultView } from "./components/VaultView";
 import { Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import "./App.css";
 
 export function App() {
@@ -185,33 +186,51 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+      <div className="h-screen w-screen bg-[#09090b] flex items-center justify-center text-zinc-400">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
       </div>
     );
   }
 
-  if (!status?.is_unlocked) {
-    return (
-      <UnlockScreen
-        isInitialized={status?.is_initialized || false}
-        savedEmail={status?.email}
-        onUnlocked={handleUnlocked}
-      />
-    );
-  }
-
   return (
-    <VaultView
-      entries={entries}
-      userEmail={status.email}
-      onSaveEntry={handleSaveEntry}
-      onDeleteEntry={handleDeleteEntry}
-      onLock={handleLock}
-      onLogout={handleLogout}
-      syncStatus={syncStatus}
-      onTriggerSync={handleTriggerSync}
-    />
+    <AnimatePresence mode="wait">
+      {!status?.is_unlocked ? (
+        <motion.div
+          key="unlock-screen"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.02 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="h-screen w-screen overflow-hidden"
+        >
+          <UnlockScreen
+            isInitialized={status?.is_initialized || false}
+            savedEmail={status?.email}
+            onUnlocked={handleUnlocked}
+          />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="vault-view"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="h-screen w-screen overflow-hidden"
+        >
+          <VaultView
+            entries={entries}
+            userEmail={status.email}
+            onSaveEntry={handleSaveEntry}
+            onDeleteEntry={handleDeleteEntry}
+            onLock={handleLock}
+            onLogout={handleLogout}
+            syncStatus={syncStatus}
+            onTriggerSync={handleTriggerSync}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

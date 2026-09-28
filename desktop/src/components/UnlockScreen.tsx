@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { api } from "../services/api";
 import { supabaseService } from "../services/supabase";
 import {
@@ -13,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
+  Fingerprint,
 } from "lucide-react";
 
 interface UnlockScreenProps {
@@ -225,13 +227,32 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
       {/* Decorative radial glow */}
       <div className="absolute top-1/3 w-96 h-96 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="w-full max-w-md bg-[#121316] border border-white/[0.08] rounded-2xl p-7 shadow-2xl relative z-10 backdrop-blur-xl">
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", damping: 25, stiffness: 350 }}
+        className="w-full max-w-md bg-[#121316] border border-white/[0.08] rounded-2xl p-7 shadow-2xl relative z-10 backdrop-blur-xl"
+      >
         {/* Header Branding */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center mb-3 shadow-inner">
-            <Lock className="w-5 h-5 text-emerald-400" />
+          <div className="relative mb-3">
+            <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center shadow-inner">
+              <Lock className="w-5 h-5 text-emerald-400" />
+            </div>
+            {/* Passkey / Biometric indicator badge */}
+            <div
+              title="Passkey & Biometrics Ready"
+              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-950 border border-emerald-500/40 flex items-center justify-center shadow-sm"
+            >
+              <Fingerprint className="w-3 h-3 text-emerald-400" />
+            </div>
           </div>
-          <h1 className="text-lg font-semibold tracking-tight text-white">PM Vault</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-white flex items-center gap-2">
+            <span>PM Vault</span>
+            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              v0.1
+            </span>
+          </h1>
           <p className="text-xs text-zinc-500 mt-1 font-mono">
             {isInitialized
               ? "Vault locked · Enter master password"
@@ -239,12 +260,20 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
           </p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5">
-            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{error}</span>
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5"
+            >
+              <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {isInitialized ? (
           /* ================= ALREADY INITIALIZED (UNLOCK VIEW) ================= */
@@ -270,9 +299,11 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
               />
             </div>
 
-            <button
+            <motion.button
               type="submit"
               disabled={loading}
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
               className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
             >
               {loading ? (
@@ -286,7 +317,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
-            </button>
+            </motion.button>
 
             <div className="pt-2 text-center">
               <button
@@ -489,7 +520,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
             )}
           </div>
         )}
-      </div>
+      </motion.div>
 
       <div className="mt-5 text-[11px] font-mono text-zinc-500 flex items-center gap-2">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
 import { api } from "../services/api";
 import { Copy, Check, RefreshCw, X, Sparkles } from "lucide-react";
 
@@ -56,7 +57,13 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
   const strength = getStrength();
 
   return (
-    <div className="bg-[#121316] border border-white/[0.08] rounded-2xl p-5 shadow-2xl text-zinc-100 w-full max-w-md backdrop-blur-xl">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.94, y: 15 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.94, y: 15 }}
+      transition={{ type: "spring", damping: 25, stiffness: 350 }}
+      className="bg-[#121316] border border-white/[0.08] rounded-2xl p-5 shadow-2xl text-zinc-100 w-full max-w-md backdrop-blur-xl"
+    >
       <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center">
@@ -191,6 +198,6 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };

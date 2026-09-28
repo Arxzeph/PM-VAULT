@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion } from "motion/react";
 import { api } from "../services/api";
 import { supabaseService, getSupabase } from "../services/supabase";
 import { KeyRound, ShieldCheck, ShieldAlert, X, Loader2, Check } from "lucide-react";
@@ -73,7 +74,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
-      <div className="w-full max-w-md bg-[#121316] border border-white/[0.08] rounded-2xl p-6 shadow-2xl text-zinc-100 relative">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 15 }}
+        transition={{ type: "spring", damping: 25, stiffness: 350 }}
+        className="w-full max-w-md bg-[#121316] border border-white/[0.08] rounded-2xl p-6 shadow-2xl text-zinc-100 relative"
+      >
         <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center">
@@ -181,7 +188,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </div>
           </form>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };

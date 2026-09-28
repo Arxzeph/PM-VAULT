@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { motion } from "motion/react";
 import { VaultEntry, SaveEntryInput } from "../types";
 import { PasswordGenerator } from "./PasswordGenerator";
 import { ServiceIcon } from "./ServiceIcon";
@@ -374,15 +375,17 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
 
         {/* Save Button */}
         <div className="pt-2">
-          <button
+          <motion.button
             type="submit"
             disabled={saving}
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.01 }}
             className="w-full py-2 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
             <span>{saving ? "Encrypting & Syncing..." : "Save Encrypted Item"}</span>
             <span className="kbd-badge text-[9px] bg-zinc-200 border-zinc-300 text-zinc-700 ml-1">Ctrl S</span>
-          </button>
+          </motion.button>
         </div>
       </form>
     </div>

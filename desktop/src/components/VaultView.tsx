@@ -17,11 +17,8 @@ import {
   Globe,
   Tag,
   FolderOpen,
-  CheckCircle2,
   RefreshCw,
   AlertCircle,
-  Clock,
-  Command,
 } from "lucide-react";
 
 interface VaultViewProps {
@@ -419,7 +416,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
                   }`}
                 >
                   {/* Automatic Brand Favicon / Monogram */}
-                  <ServiceIcon title={entry.title} url={entry.url} size={18} />
+                  <ServiceIcon title={entry.title} url={entry.url || undefined} size={18} />
 
                   {/* Text details */}
                   <div className="flex-1 min-w-0">

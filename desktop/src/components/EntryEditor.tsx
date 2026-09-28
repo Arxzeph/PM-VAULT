@@ -10,7 +10,6 @@ import {
   Sparkles,
   ExternalLink,
   Trash2,
-  Save,
   X,
   Star,
   Globe,
@@ -152,7 +151,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
             </h2>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[10px] font-mono text-zinc-500">
-                {entry?.updated_at ? `Updated ${new Date(entry.updated_at).toLocaleDateString()}` : "Zero-Knowledge Item"}
+                {entry?.client_updated_at ? `Updated ${new Date(entry.client_updated_at).toLocaleDateString()}` : "Zero-Knowledge Item"}
               </span>
             </div>
           </div>

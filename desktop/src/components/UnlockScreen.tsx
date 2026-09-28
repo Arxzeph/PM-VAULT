@@ -155,14 +155,12 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
         throw new Error("Failed to register user in Supabase cloud.");
       }
 
-      setStatusMessage("Uploading encrypted metadata...");
-      await supabaseService.upsertVaultMetadata({
-        user_id: authRes.user.id,
-        user_email: cleanEmail,
-        salt: initRes.salt,
-        encrypted_dek: initRes.encrypted_dek,
-        dek_nonce: initRes.dek_nonce,
-      });
+      await supabaseService.saveRemoteVaultMeta(
+        authRes.user.id,
+        initRes.master_salt,
+        initRes.encrypted_dek,
+        initRes.dek_nonce
+      );
 
       onUnlocked();
     } catch (err: any) {

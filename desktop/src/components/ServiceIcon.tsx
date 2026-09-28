@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Globe, KeyRound } from "lucide-react";
 
 interface ServiceIconProps {
   title?: string;

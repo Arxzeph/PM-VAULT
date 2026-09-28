@@ -1,0 +1,59 @@
+name: Build Linux Packages (Parrot / Debian)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies for WebKitGTK & Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            squashfs-tools
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'desktop/package-lock.json'
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Frontend Dependencies
+        working-directory: ./desktop
+        run: npm install
+
+      - name: Build Tauri Linux Bundles (.AppImage & .deb)
+        working-directory: ./desktop
+        env:
+          VITE_SUPABASE_URL: "https://fdavvijioofchmkgmihg.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkYXZ2aWppb29mY2hta2dtaWhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1ODQzMDIsImV4cCI6MjEwNjE2MDMwMn0.8c3urWFa1v1_JZkl-xElT4Pq77qvKGp-hAw6oROrNiQ"
+        run: npm run tauri build
+
+      - name: Upload Linux Bundles (.AppImage & .deb)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PM-Vault-Linux-Packages
+          path: |
+            desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            desktop/src-tauri/target/release/bundle/deb/*.deb
+            desktop/src-tauri/target/release/desktop

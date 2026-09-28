@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+target/
+.dart_tool/
+.packages
+build/
+
+# Build artifacts & binaries
+*.exe
+*.apk
+*.msi
+*.deb
+*.AppImage
+*.db
+*.zip
+*.rar
+*.7z
+*.tar.*
+dist/
+dist-linux/
+desktop/dist/
+desktop/src-tauri/target/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+# Environment files
+.env
+.env.local
+
+# IDE & OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

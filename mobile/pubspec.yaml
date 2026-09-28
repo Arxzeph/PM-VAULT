@@ -1,0 +1,43 @@
+name: pm_vault_mobile
+description: "Zero-Knowledge Personal Password Manager - Mobile App"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Reactive State Management
+  flutter_riverpod: ^2.5.1
+  
+  # Cryptography & Key Derivation (Argon2id, XChaCha20-Poly1305, HKDF, CSPRNG)
+  cryptography: ^2.7.0
+  pointycastle: ^3.7.4
+  
+  # Supabase Client & Realtime WebSockets
+  supabase_flutter: ^2.8.0
+  
+  # Encrypted Local Database
+  sqflite_sqlcipher: ^3.1.0
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  
+  # Biometric Auth & Secure Hardware Storage
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.2
+  
+  # UI & Utilities
+  flutter_spinkit: ^5.2.1
+  google_fonts: ^6.2.1
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

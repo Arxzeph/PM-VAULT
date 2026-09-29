@@ -1,6 +1,12 @@
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SecurityQuestion {
+    pub question: String,
+    pub answer: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultEntryDto {
     pub id: String,
@@ -9,6 +15,8 @@ pub struct VaultEntryDto {
     pub password: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub security_questions: Vec<SecurityQuestion>,
     pub tags: Vec<String>,
     pub favorite: bool,
     pub ciphertext: String,
@@ -27,6 +35,8 @@ pub struct EntryPayload {
     pub password: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub security_questions: Vec<SecurityQuestion>,
     pub tags: Vec<String>,
     pub favorite: bool,
 }
@@ -46,6 +56,7 @@ pub fn init_tables(conn: &Connection) -> Result<(), String> {
             password TEXT,
             url TEXT,
             notes TEXT,
+            security_questions TEXT NOT NULL DEFAULT '[]',
             tags TEXT NOT NULL DEFAULT '[]',
             favorite INTEGER NOT NULL DEFAULT 0,
             ciphertext TEXT NOT NULL,
@@ -64,6 +75,12 @@ pub fn init_tables(conn: &Connection) -> Result<(), String> {
         ",
     )
     .map_err(|e| format!("Database initialization failed: {}", e))?;
+
+    // Safe migration for existing databases
+    let _ = conn.execute(
+        "ALTER TABLE local_entries ADD COLUMN security_questions TEXT NOT NULL DEFAULT '[]'",
+        [],
+    );
 
     Ok(())
 }
@@ -101,7 +118,7 @@ pub fn list_active_entries(conn: &Connection) -> Result<Vec<VaultEntryDto>, Stri
         .prepare(
             "SELECT id, title, username, password, url, notes, tags, favorite,
                     ciphertext, nonce, version, is_deleted, sync_status,
-                    client_updated_at, server_updated_at
+                    client_updated_at, server_updated_at, security_questions
              FROM local_entries
              WHERE is_deleted = 0
              ORDER BY favorite DESC, title ASC",
@@ -114,6 +131,8 @@ pub fn list_active_entries(conn: &Connection) -> Result<Vec<VaultEntryDto>, Stri
             let tags: Vec<String> = serde_json::from_str(&tags_str).unwrap_or_default();
             let fav_int: i32 = row.get(7)?;
             let del_int: i32 = row.get(11)?;
+            let sq_str: String = row.get(15).unwrap_or_else(|_| "[]".to_string());
+            let security_questions: Vec<SecurityQuestion> = serde_json::from_str(&sq_str).unwrap_or_default();
 
             Ok(VaultEntryDto {
                 id: row.get(0)?,
@@ -131,6 +150,7 @@ pub fn list_active_entries(conn: &Connection) -> Result<Vec<VaultEntryDto>, Stri
                 sync_status: row.get(12)?,
                 client_updated_at: row.get(13)?,
                 server_updated_at: row.get(14)?,
+                security_questions,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -148,7 +168,7 @@ pub fn get_entry_by_id(conn: &Connection, id: &str) -> Result<Option<VaultEntryD
         .prepare(
             "SELECT id, title, username, password, url, notes, tags, favorite,
                     ciphertext, nonce, version, is_deleted, sync_status,
-                    client_updated_at, server_updated_at
+                    client_updated_at, server_updated_at, security_questions
              FROM local_entries
              WHERE id = ?1",
         )
@@ -163,6 +183,8 @@ pub fn get_entry_by_id(conn: &Connection, id: &str) -> Result<Option<VaultEntryD
         let tags: Vec<String> = serde_json::from_str(&tags_str).unwrap_or_default();
         let fav_int: i32 = row.get(7).map_err(|e| e.to_string())?;
         let del_int: i32 = row.get(11).map_err(|e| e.to_string())?;
+        let sq_str: String = row.get(15).unwrap_or_else(|_| "[]".to_string());
+        let security_questions: Vec<SecurityQuestion> = serde_json::from_str(&sq_str).unwrap_or_default();
 
         Ok(Some(VaultEntryDto {
             id: row.get(0).map_err(|e| e.to_string())?,
@@ -180,6 +202,7 @@ pub fn get_entry_by_id(conn: &Connection, id: &str) -> Result<Option<VaultEntryD
             sync_status: row.get(12).map_err(|e| e.to_string())?,
             client_updated_at: row.get(13).map_err(|e| e.to_string())?,
             server_updated_at: row.get(14).map_err(|e| e.to_string())?,
+            security_questions,
         }))
     } else {
         Ok(None)
@@ -188,6 +211,7 @@ pub fn get_entry_by_id(conn: &Connection, id: &str) -> Result<Option<VaultEntryD
 
 pub fn upsert_entry(conn: &Connection, entry: &VaultEntryDto) -> Result<(), String> {
     let tags_json = serde_json::to_string(&entry.tags).unwrap_or_else(|_| "[]".to_string());
+    let sq_json = serde_json::to_string(&entry.security_questions).unwrap_or_else(|_| "[]".to_string());
     let fav_int = if entry.favorite { 1 } else { 0 };
     let del_int = if entry.is_deleted { 1 } else { 0 };
 
@@ -195,8 +219,8 @@ pub fn upsert_entry(conn: &Connection, entry: &VaultEntryDto) -> Result<(), Stri
         "INSERT INTO local_entries (
             id, title, username, password, url, notes, tags, favorite,
             ciphertext, nonce, version, is_deleted, sync_status,
-            client_updated_at, server_updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+            client_updated_at, server_updated_at, security_questions
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
         ON CONFLICT(id) DO UPDATE SET
             title = excluded.title,
             username = excluded.username,
@@ -211,7 +235,8 @@ pub fn upsert_entry(conn: &Connection, entry: &VaultEntryDto) -> Result<(), Stri
             is_deleted = excluded.is_deleted,
             sync_status = excluded.sync_status,
             client_updated_at = excluded.client_updated_at,
-            server_updated_at = excluded.server_updated_at",
+            server_updated_at = excluded.server_updated_at,
+            security_questions = excluded.security_questions",
         params![
             entry.id,
             entry.title,
@@ -228,6 +253,7 @@ pub fn upsert_entry(conn: &Connection, entry: &VaultEntryDto) -> Result<(), Stri
             entry.sync_status,
             entry.client_updated_at,
             entry.server_updated_at,
+            sq_json,
         ],
     )
     .map_err(|e| format!("Failed to save entry {}: {}", entry.id, e))?;
@@ -252,7 +278,7 @@ pub fn get_pending_sync(conn: &Connection) -> Result<Vec<VaultEntryDto>, String>
         .prepare(
             "SELECT id, title, username, password, url, notes, tags, favorite,
                     ciphertext, nonce, version, is_deleted, sync_status,
-                    client_updated_at, server_updated_at
+                    client_updated_at, server_updated_at, security_questions
              FROM local_entries
              WHERE sync_status != 'synced'",
         )
@@ -264,6 +290,8 @@ pub fn get_pending_sync(conn: &Connection) -> Result<Vec<VaultEntryDto>, String>
             let tags: Vec<String> = serde_json::from_str(&tags_str).unwrap_or_default();
             let fav_int: i32 = row.get(7)?;
             let del_int: i32 = row.get(11)?;
+            let sq_str: String = row.get(15).unwrap_or_else(|_| "[]".to_string());
+            let security_questions: Vec<SecurityQuestion> = serde_json::from_str(&sq_str).unwrap_or_default();
 
             Ok(VaultEntryDto {
                 id: row.get(0)?,
@@ -281,6 +309,7 @@ pub fn get_pending_sync(conn: &Connection) -> Result<Vec<VaultEntryDto>, String>
                 sync_status: row.get(12)?,
                 client_updated_at: row.get(13)?,
                 server_updated_at: row.get(14)?,
+                security_questions,
             })
         })
         .map_err(|e| e.to_string())?;

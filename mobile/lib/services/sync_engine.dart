@@ -90,6 +90,17 @@ class SyncEngine {
             tags.addAll((payload['tags'] as List).map((e) => e.toString()));
           }
 
+          final List<SecurityQuestion> securityQuestions = [];
+          if (payload['security_questions'] != null && payload['security_questions'] is List) {
+            for (final item in payload['security_questions']) {
+              if (item is Map) {
+                securityQuestions.add(
+                  SecurityQuestion.fromMap(Map<String, dynamic>.from(item)),
+                );
+              }
+            }
+          }
+
           final updatedEntry = VaultEntry(
             id: id,
             title: payload['title'] as String? ?? 'Untitled',
@@ -97,6 +108,7 @@ class SyncEngine {
             password: payload['password'] as String?,
             url: payload['url'] as String?,
             notes: payload['notes'] as String?,
+            securityQuestions: securityQuestions,
             tags: tags,
             favorite: payload['favorite'] == true,
             ciphertext: row['ciphertext'] as String,

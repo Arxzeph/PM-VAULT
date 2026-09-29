@@ -2,7 +2,7 @@ use crate::crypto::{
     decrypt_dek, decrypt_entry, derive_auth_verifier, derive_master_key, encrypt_dek,
     encrypt_entry, generate_dek, generate_password as gen_pwd, generate_salt,
 };
-use crate::db::{self, EntryPayload, VaultEntryDto};
+use crate::db::{self, EntryPayload, SecurityQuestion, VaultEntryDto};
 use crate::state::{AppState, VaultSession};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use chrono::Utc;
@@ -44,6 +44,8 @@ pub struct SaveEntryInput {
     pub password: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub security_questions: Vec<SecurityQuestion>,
     pub tags: Vec<String>,
     pub favorite: bool,
 }
@@ -234,6 +236,7 @@ pub fn save_entry(
         password: input.password.clone(),
         url: input.url.clone(),
         notes: input.notes.clone(),
+        security_questions: input.security_questions.clone(),
         tags: input.tags.clone(),
         favorite: input.favorite,
     };
@@ -256,6 +259,7 @@ pub fn save_entry(
         password: input.password,
         url: input.url,
         notes: input.notes,
+        security_questions: input.security_questions,
         tags: input.tags,
         favorite: input.favorite,
         ciphertext: ct_b64,
@@ -433,6 +437,7 @@ pub fn apply_remote_entry(
         password: payload.password,
         url: payload.url,
         notes: payload.notes,
+        security_questions: payload.security_questions,
         tags: payload.tags,
         favorite: payload.favorite,
         ciphertext: remote.ciphertext,
@@ -530,6 +535,141 @@ pub fn change_master_password(
     Ok(ChangePasswordResponse {
         success: true,
         auth_verifier: new_auth_verifier,
+        master_salt: new_salt_b64,
+        encrypted_dek: new_enc_dek_b64,
+        dek_nonce: new_nonce_b64,
+    })
+}
+
+#[tauri::command]
+pub fn setup_recovery_questions(
+    questions: Vec<String>,
+    answers: Vec<String>,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_ref().ok_or_else(|| "Vault is locked".to_string())?;
+
+    if questions.is_empty() || questions.len() != answers.len() {
+        return Err("Please provide at least one security question and answer.".into());
+    }
+
+    // Normalize and build combined recovery string
+    let mut combined = String::new();
+    for (q, a) in questions.iter().zip(answers.iter()) {
+        let clean_a = a.trim().to_lowercase();
+        if clean_a.is_empty() {
+            return Err("All recovery answers must be filled in.".into());
+        }
+        combined.push_str(&format!("{}:{}|", q.trim().to_lowercase(), clean_a));
+    }
+
+    let recovery_salt = generate_salt();
+    let recovery_mk = derive_master_key(&combined, &recovery_salt)?;
+    let (rec_enc_dek, rec_nonce) = encrypt_dek(&session.dek, &recovery_mk)?;
+
+    let questions_json = serde_json::to_string(&questions)
+        .map_err(|e| format!("Failed to serialize recovery questions: {}", e))?;
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::set_meta(&conn, "recovery_questions", &questions_json)?;
+    db::set_meta(&conn, "recovery_salt", &BASE64.encode(&recovery_salt))?;
+    db::set_meta(&conn, "recovery_enc_dek", &BASE64.encode(&rec_enc_dek))?;
+    db::set_meta(&conn, "recovery_nonce", &BASE64.encode(&rec_nonce))?;
+
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn get_recovery_questions(state: State<'_, AppState>) -> Result<Option<Vec<String>>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let q_json = db::get_meta(&conn, "recovery_questions")?;
+    match q_json {
+        Some(s) => {
+            let qs: Vec<String> = serde_json::from_str(&s).unwrap_or_default();
+            if qs.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(qs))
+            }
+        }
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+pub fn recover_vault_with_questions(
+    answers: Vec<String>,
+    new_master_password: String,
+    state: State<'_, AppState>,
+) -> Result<UnlockVaultResponse, String> {
+    if new_master_password.len() < 8 {
+        return Err("New master password must be at least 8 characters.".into());
+    }
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let q_json = db::get_meta(&conn, "recovery_questions")?
+        .ok_or_else(|| "No recovery questions configured for this vault.".to_string())?;
+    let rec_salt_b64 = db::get_meta(&conn, "recovery_salt")?
+        .ok_or_else(|| "Corrupted recovery metadata.".to_string())?;
+    let rec_enc_dek_b64 = db::get_meta(&conn, "recovery_enc_dek")?
+        .ok_or_else(|| "Corrupted recovery metadata.".to_string())?;
+    let rec_nonce_b64 = db::get_meta(&conn, "recovery_nonce")?
+        .ok_or_else(|| "Corrupted recovery metadata.".to_string())?;
+    let email = db::get_meta(&conn, "user_email")?.unwrap_or_default();
+
+    let questions: Vec<String> = serde_json::from_str(&q_json)
+        .map_err(|e| format!("Invalid recovery questions data: {}", e))?;
+
+    if questions.len() != answers.len() {
+        return Err("Answers count does not match questions count.".into());
+    }
+
+    let mut combined = String::new();
+    for (q, a) in questions.iter().zip(answers.iter()) {
+        combined.push_str(&format!("{}:{}|", q.trim().to_lowercase(), a.trim().to_lowercase()));
+    }
+
+    let rec_salt = BASE64.decode(&rec_salt_b64).map_err(|e| e.to_string())?;
+    let rec_enc_dek = BASE64.decode(&rec_enc_dek_b64).map_err(|e| e.to_string())?;
+    let rec_nonce_vec = BASE64.decode(&rec_nonce_b64).map_err(|e| e.to_string())?;
+
+    if rec_nonce_vec.len() != 24 {
+        return Err("Invalid recovery nonce length".into());
+    }
+    let mut nonce_arr = [0u8; 24];
+    nonce_arr.copy_from_slice(&rec_nonce_vec);
+
+    let recovery_mk = derive_master_key(&combined, &rec_salt)?;
+    let dek = decrypt_dek(&rec_enc_dek, &nonce_arr, &recovery_mk)
+        .map_err(|_| "Security question answers are incorrect.".to_string())?;
+
+    // Now re-encrypt the recovered DEK under the new master password
+    let new_salt = generate_salt();
+    let new_mk = derive_master_key(&new_master_password, &new_salt)?;
+    let (new_enc_dek, new_nonce) = encrypt_dek(&dek, &new_mk)?;
+    let new_auth_verifier = derive_auth_verifier(&new_mk, &email)?;
+
+    let new_salt_b64 = BASE64.encode(new_salt);
+    let new_enc_dek_b64 = BASE64.encode(new_enc_dek);
+    let new_nonce_b64 = BASE64.encode(new_nonce);
+
+    db::set_meta(&conn, "master_salt", &new_salt_b64)?;
+    db::set_meta(&conn, "encrypted_dek", &new_enc_dek_b64)?;
+    db::set_meta(&conn, "dek_nonce", &new_nonce_b64)?;
+
+    let mut session = state.session.lock().map_err(|e| e.to_string())?;
+    *session = Some(VaultSession {
+        email: email.clone(),
+        auth_verifier: new_auth_verifier.clone(),
+        master_key: new_mk,
+        dek,
+    });
+
+    Ok(UnlockVaultResponse {
+        success: true,
+        auth_verifier: new_auth_verifier,
+        email,
         master_salt: new_salt_b64,
         encrypted_dek: new_enc_dek_b64,
         dek_nonce: new_nonce_b64,

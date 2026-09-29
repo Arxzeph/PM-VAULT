@@ -1,3 +1,8 @@
+export interface SecurityQuestion {
+  question: string;
+  answer: string;
+}
+
 export interface VaultEntry {
   id: string;
   title: string;
@@ -5,6 +10,7 @@ export interface VaultEntry {
   password?: string | null;
   url?: string | null;
   notes?: string | null;
+  security_questions?: SecurityQuestion[];
   tags: string[];
   favorite: boolean;
   ciphertext: string;
@@ -29,6 +35,7 @@ export interface SaveEntryInput {
   password?: string;
   url?: string;
   notes?: string;
+  security_questions?: SecurityQuestion[];
   tags: string[];
   favorite: boolean;
 }

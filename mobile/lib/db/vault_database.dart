@@ -35,6 +35,7 @@ class VaultDatabase {
             password TEXT,
             url TEXT,
             notes TEXT,
+            security_questions TEXT,
             tags TEXT,
             favorite INTEGER NOT NULL DEFAULT 0,
             ciphertext TEXT NOT NULL,
@@ -50,6 +51,13 @@ class VaultDatabase {
         await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_entries_status ON local_entries(sync_status);'
         );
+      },
+      onOpen: (db) async {
+        try {
+          await db.execute(
+            'ALTER TABLE local_entries ADD COLUMN security_questions TEXT;'
+          );
+        } catch (_) {}
       },
     );
   }

@@ -277,7 +277,6 @@ class VaultNotifier extends StateNotifier<VaultState> {
         throw Exception('Biometrics not registered. Please enter master password once.');
       }
 
-      final saltB64 = await VaultDatabase.getMeta('master_salt');
       final encDekB64 = await VaultDatabase.getMeta('encrypted_dek');
       final dekNonceB64 = await VaultDatabase.getMeta('dek_nonce');
       final email = await VaultDatabase.getMeta('user_email');
@@ -359,6 +358,7 @@ class VaultNotifier extends StateNotifier<VaultState> {
     String? password,
     String? url,
     String? notes,
+    List<SecurityQuestion> securityQuestions = const [],
     List<String> tags = const [],
     bool favorite = false,
   }) async {
@@ -373,6 +373,7 @@ class VaultNotifier extends StateNotifier<VaultState> {
       'password': password,
       'url': url,
       'notes': notes,
+      'security_questions': securityQuestions.map((q) => q.toMap()).toList(),
       'tags': tags,
       'favorite': favorite,
     };
@@ -389,6 +390,7 @@ class VaultNotifier extends StateNotifier<VaultState> {
       password: password,
       url: url,
       notes: notes,
+      securityQuestions: securityQuestions,
       tags: tags,
       favorite: favorite,
       ciphertext: enc['ciphertext']!,

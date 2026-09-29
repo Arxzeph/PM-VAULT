@@ -5,6 +5,9 @@ import { EntryEditor } from "./EntryEditor";
 import { PasswordGenerator } from "./PasswordGenerator";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { ServiceIcon } from "./ServiceIcon";
+import { UpdateModal } from "./UpdateModal";
+import { copyWithAutoWipe } from "../services/clipboard";
+import { checkForAppUpdate, UpdateInfo, CURRENT_VERSION } from "../services/updater";
 import {
   Search,
   Plus,
@@ -26,6 +29,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  HelpCircle,
 } from "lucide-react";
 
 interface VaultViewProps {
@@ -52,13 +56,39 @@ export const VaultView: React.FC<VaultViewProps> = ({
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<"all" | "favorites" | "logins" | "passkeys" | "notes">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "favorites" | "logins" | "passkeys" | "notes" | "questions">("all");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showGlobalGenerator, setShowGlobalGenerator] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [hasUpdateBadge, setHasUpdateBadge] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Silent update check on mount
+  useEffect(() => {
+    checkForAppUpdate().then((info) => {
+      if (info) {
+        setUpdateInfo(info);
+        setHasUpdateBadge(true);
+      }
+    });
+  }, []);
+
+  const handleManualCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    setShowUpdateModal(true);
+    try {
+      const info = await checkForAppUpdate();
+      setUpdateInfo(info);
+      setHasUpdateBadge(!!info);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -99,6 +129,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
       if (activeFilter === "logins" && !e.password) return false;
       if (activeFilter === "passkeys" && !e.tags?.includes("passkey")) return false;
       if (activeFilter === "notes" && (!e.notes || e.password)) return false;
+      if (activeFilter === "questions" && (!e.security_questions || e.security_questions.length === 0)) return false;
 
       if (selectedTag && !e.tags?.includes(selectedTag)) return false;
 
@@ -109,7 +140,12 @@ export const VaultView: React.FC<VaultViewProps> = ({
         const matchUrl = e.url?.toLowerCase().includes(q);
         const matchNotes = e.notes?.toLowerCase().includes(q);
         const matchTags = e.tags?.some((t) => t.toLowerCase().includes(q));
-        if (!matchTitle && !matchUser && !matchUrl && !matchNotes && !matchTags) {
+        const matchQuestions = e.security_questions?.some(
+          (sq) =>
+            sq.question.toLowerCase().includes(q) ||
+            sq.answer.toLowerCase().includes(q)
+        );
+        if (!matchTitle && !matchUser && !matchUrl && !matchNotes && !matchTags && !matchQuestions) {
           return false;
         }
       }
@@ -142,7 +178,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
   const handleCopy = (text: string, key: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(text);
+    copyWithAutoWipe(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
   };
@@ -156,6 +192,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
       password: entry.password || undefined,
       url: entry.url || undefined,
       notes: entry.notes || undefined,
+      security_questions: entry.security_questions || [],
       tags: entry.tags || [],
       favorite: !entry.favorite,
     });
@@ -168,6 +205,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
     { key: "logins" as const, label: "Logins", icon: Globe, iconColor: "text-zinc-400", count: entries.filter((e) => e.password).length },
     { key: "passkeys" as const, label: "Passkeys", icon: Fingerprint, iconColor: "text-violet-400", count: entries.filter((e) => e.tags?.includes("passkey")).length },
     { key: "notes" as const, label: "Secure Notes", icon: FileText, iconColor: "text-zinc-400", count: entries.filter((e) => e.notes && !e.password).length },
+    { key: "questions" as const, label: "Security Q&A", icon: HelpCircle, iconColor: "text-cyan-400", count: entries.filter((e) => e.security_questions && e.security_questions.length > 0).length },
   ];
 
   return (
@@ -307,6 +345,26 @@ export const VaultView: React.FC<VaultViewProps> = ({
               )}
             </div>
           </div>
+
+          <button
+            onClick={handleManualCheckUpdate}
+            className="w-full py-1.5 px-2 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-[11px] font-medium border border-white/[0.04] flex items-center justify-between transition group"
+          >
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span>v{CURRENT_VERSION}</span>
+            </div>
+            {hasUpdateBadge ? (
+              <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 font-semibold bg-emerald-500/15 border border-emerald-500/25 px-1.5 py-0.5 rounded-full animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Update
+              </span>
+            ) : (
+              <span className="text-[10px] text-zinc-500 group-hover:text-zinc-400 transition">
+                Check updates
+              </span>
+            )}
+          </button>
 
           <button
             onClick={() => setShowChangePassword(true)}
@@ -487,6 +545,12 @@ export const VaultView: React.FC<VaultViewProps> = ({
                             #{t}
                           </span>
                         ))}
+                        {entry.security_questions && entry.security_questions.length > 0 && (
+                          <span className="text-[10px] font-mono text-cyan-400/90 bg-cyan-500/10 px-1.5 py-0.5 rounded-md border border-cyan-500/20 flex items-center gap-1">
+                            <HelpCircle className="w-2.5 h-2.5" />
+                            <span>{entry.security_questions.length} Q&A</span>
+                          </span>
+                        )}
                       </div>
 
                       {/* Bottom: Quick Copy Actions */}
@@ -606,6 +670,12 @@ export const VaultView: React.FC<VaultViewProps> = ({
                       {/* Extra actions in expanded list mode */}
                       {!selectedEntry && (
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {entry.security_questions && entry.security_questions.length > 0 && (
+                            <span className="hidden sm:inline-flex text-[10px] font-mono text-cyan-400/90 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20 items-center gap-1">
+                              <HelpCircle className="w-2.5 h-2.5" />
+                              <span>{entry.security_questions.length} Q&A</span>
+                            </span>
+                          )}
                           {entry.username && (
                             <button
                               onClick={(e) => handleCopy(entry.username!, `${entry.id}-user`, e)}
@@ -748,6 +818,14 @@ export const VaultView: React.FC<VaultViewProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Auto-Updater Modal */}
+      <UpdateModal
+        isOpen={showUpdateModal}
+        updateInfo={updateInfo}
+        isChecking={isCheckingUpdate}
+        onClose={() => setShowUpdateModal(false)}
+      />
     </div>
   );
 };

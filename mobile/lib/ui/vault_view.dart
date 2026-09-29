@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/vault_entry.dart';
 import '../providers/vault_providers.dart';
 import '../services/sync_engine.dart';
+import '../services/clipboard_service.dart';
+import '../services/update_service.dart';
 import 'entry_editor_dialog.dart';
 import 'password_generator_sheet.dart';
 import 'service_icon.dart';
@@ -21,6 +22,14 @@ class _VaultViewState extends ConsumerState<VaultView> {
   String? _selectedTag;
   String? _copiedKey;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.showUpdateDialog(context, silentIfUpToDate: true);
+    });
+  }
+
   void _openEditor([VaultEntry? entry]) {
     EntryEditorDialog.show(
       context: context,
@@ -32,6 +41,7 @@ class _VaultViewState extends ConsumerState<VaultView> {
         String? password,
         String? url,
         String? notes,
+        List<SecurityQuestion> securityQuestions = const [],
         List<String> tags = const [],
         bool favorite = false,
       }) async {
@@ -42,6 +52,7 @@ class _VaultViewState extends ConsumerState<VaultView> {
               password: password,
               url: url,
               notes: notes,
+              securityQuestions: securityQuestions,
               tags: tags,
               favorite: favorite,
             );
@@ -62,11 +73,32 @@ class _VaultViewState extends ConsumerState<VaultView> {
   }
 
   void _copyToClipboard(String text, String key, String label) {
-    Clipboard.setData(ClipboardData(text: text));
+    ClipboardService.copyWithAutoWipe(
+      text,
+      onWiped: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.shield_rounded, color: Color(0xFF10B981), size: 14),
+                  SizedBox(width: 8),
+                  Text('Clipboard cleared for security (30s)'),
+                ],
+              ),
+              duration: const Duration(seconds: 2),
+              backgroundColor: const Color(0xFF18181B),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      },
+    );
     setState(() => _copiedKey = key);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label copied to clipboard'),
+        content: Text('$label copied (auto-wipes in 30s)'),
         duration: const Duration(seconds: 1),
         backgroundColor: const Color(0xFF18181B),
         behavior: SnackBarBehavior.floating,
@@ -94,6 +126,7 @@ class _VaultViewState extends ConsumerState<VaultView> {
       if (_filter == 'favorites' && !e.favorite) return false;
       if (_filter == 'logins' && (e.password == null || e.password!.isEmpty)) return false;
       if (_filter == 'passkeys' && !e.tags.contains('passkey')) return false;
+      if (_filter == 'questions' && e.securityQuestions.isEmpty) return false;
       if (_filter == 'notes' &&
           (e.notes == null || e.notes!.isEmpty || (e.password != null && e.password!.isNotEmpty))) {
         return false;
@@ -107,7 +140,10 @@ class _VaultViewState extends ConsumerState<VaultView> {
         final matchUrl = e.url?.toLowerCase().contains(q) ?? false;
         final matchNotes = e.notes?.toLowerCase().contains(q) ?? false;
         final matchTags = e.tags.any((t) => t.toLowerCase().contains(q));
-        if (!matchTitle && !matchUser && !matchUrl && !matchNotes && !matchTags) {
+        final matchQuestions = e.securityQuestions.any((sq) =>
+            sq.question.toLowerCase().contains(q) ||
+            sq.answer.toLowerCase().contains(q));
+        if (!matchTitle && !matchUser && !matchUrl && !matchNotes && !matchTags && !matchQuestions) {
           return false;
         }
       }
@@ -195,6 +231,8 @@ class _VaultViewState extends ConsumerState<VaultView> {
             onSelected: (val) async {
               if (val == 'sync') {
                 notifier.triggerSync();
+              } else if (val == 'update') {
+                UpdateService.showUpdateDialog(context, silentIfUpToDate: false);
               } else if (val == 'lock') {
                 notifier.lockVault();
               } else if (val == 'relink') {
@@ -237,6 +275,16 @@ class _VaultViewState extends ConsumerState<VaultView> {
                     Icon(Icons.sync_rounded, color: Color(0xFF10B981), size: 16),
                     SizedBox(width: 10),
                     Text('Sync Now', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'update',
+                child: Row(
+                  children: [
+                    Icon(Icons.system_update_rounded, color: Colors.cyanAccent, size: 16),
+                    SizedBox(width: 10),
+                    Text('Check for Updates', style: TextStyle(color: Colors.white, fontSize: 13)),
                   ],
                 ),
               ),
@@ -313,6 +361,8 @@ class _VaultViewState extends ConsumerState<VaultView> {
                           count: vault.entries.where((e) => e.tags.contains('passkey')).length),
                       _buildFilterChip('Notes', 'notes', Icons.description_outlined,
                           count: vault.entries.where((e) => e.notes != null && (e.password == null || e.password!.isEmpty)).length),
+                      _buildFilterChip('Q&A', 'questions', Icons.help_outline_rounded,
+                          count: vault.entries.where((e) => e.securityQuestions.isNotEmpty).length),
                       if (allTags.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         ...allTags.map((tag) => Padding(
@@ -491,14 +541,42 @@ class _VaultViewState extends ConsumerState<VaultView> {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      item.username ?? item.url ?? 'No username',
-                      style: const TextStyle(
-                        color: Color(0xFFA1A1AA),
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.username ?? item.url ?? 'No username',
+                            style: const TextStyle(
+                              color: Color(0xFFA1A1AA),
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (item.securityQuestions.isNotEmpty) ...[
+                          const SizedBox(width: 5),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF06B6D4).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.help_outline_rounded, color: Color(0xFF06B6D4), size: 9),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${item.securityQuestions.length}',
+                                  style: const TextStyle(color: Color(0xFF06B6D4), fontSize: 9, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),

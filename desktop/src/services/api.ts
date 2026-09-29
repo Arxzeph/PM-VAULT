@@ -137,4 +137,28 @@ export const api = {
       dekNonce,
     });
   },
+
+  setupRecoveryQuestions: async (
+    questions: string[],
+    answers: string[]
+  ): Promise<boolean> => {
+    return await invoke<boolean>("setup_recovery_questions", {
+      questions,
+      answers,
+    });
+  },
+
+  getRecoveryQuestions: async (): Promise<string[] | null> => {
+    return await invoke<string[] | null>("get_recovery_questions");
+  },
+
+  recoverVaultWithQuestions: async (
+    answers: string[],
+    newMasterPassword: string
+  ): Promise<UnlockVaultResponse> => {
+    return await invoke<UnlockVaultResponse>("recover_vault_with_questions", {
+      answers,
+      newMasterPassword,
+    });
+  },
 };

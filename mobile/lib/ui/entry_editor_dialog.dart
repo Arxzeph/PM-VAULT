@@ -13,6 +13,7 @@ class EntryEditorDialog extends StatefulWidget {
     String? password,
     String? url,
     String? notes,
+    List<SecurityQuestion> securityQuestions,
     List<String> tags,
     bool favorite,
   }) onSave;
@@ -35,6 +36,7 @@ class EntryEditorDialog extends StatefulWidget {
       String? password,
       String? url,
       String? notes,
+      List<SecurityQuestion> securityQuestions,
       List<String> tags,
       bool favorite,
     }) onSave,
@@ -65,6 +67,17 @@ class EntryEditorDialog extends StatefulWidget {
   State<EntryEditorDialog> createState() => _EntryEditorDialogState();
 }
 
+const List<String> _presetQuestions = [
+  "What was the name of your first pet?",
+  "What elementary school did you attend?",
+  "In what city were you born?",
+  "What is your mother's maiden name?",
+  "What was the make and model of your first car?",
+  "What was your childhood nickname?",
+  "What is the name of your favorite book or film?",
+  "Custom question...",
+];
+
 class _EntryEditorDialogState extends State<EntryEditorDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
@@ -73,6 +86,9 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
   late TextEditingController _urlController;
   late TextEditingController _notesController;
   late TextEditingController _tagsController;
+  List<Map<String, dynamic>> _securityQuestions = [];
+  final Map<int, bool> _revealedAnswers = {};
+  int? _copiedAnswerIndex;
   bool _favorite = false;
   bool _obscurePassword = true;
   bool _isSaving = false;
@@ -88,6 +104,11 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
     _notesController = TextEditingController(text: e?.notes ?? '');
     _tagsController = TextEditingController(text: e?.tags.join(', ') ?? '');
     _favorite = e?.favorite ?? false;
+    if (e != null && e.securityQuestions.isNotEmpty) {
+      _securityQuestions = e.securityQuestions
+          .map((q) => {'question': q.question, 'answer': q.answer})
+          .toList();
+    }
   }
 
   @override
@@ -127,6 +148,37 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
     return score;
   }
 
+  void _addQuestion() {
+    setState(() {
+      _securityQuestions.add({
+        'question': _presetQuestions[0],
+        'answer': '',
+      });
+    });
+  }
+
+  void _removeQuestion(int index) {
+    setState(() {
+      _securityQuestions.removeAt(index);
+      _revealedAnswers.remove(index);
+    });
+  }
+
+  void _generateFakeAnswer(int index) {
+    const words = [
+      "Solar", "Falcon", "Orbit", "Velvet", "Echo", "Timber", "Cobalt",
+      "Aurora", "Summit", "Zephyr", "Opal", "Canyon", "Shadow", "Cosmos",
+      "Pioneer", "Granite", "Meadow", "Breeze", "Cinder", "Glacier"
+    ];
+    final rnd = DateTime.now().microsecondsSinceEpoch;
+    final w1 = words[rnd % words.length];
+    final w2 = words[(rnd ~/ 7) % words.length];
+    final num = 100 + (rnd % 900);
+    setState(() {
+      _securityQuestions[index]['answer'] = '$w1-$w2-$num';
+    });
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _isSaving) return;
 
@@ -138,6 +190,14 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
           .where((s) => s.isNotEmpty)
           .toList();
 
+      final questions = _securityQuestions
+          .map((q) => SecurityQuestion(
+                question: (q['question'] as String? ?? '').trim(),
+                answer: (q['answer'] as String? ?? '').trim(),
+              ))
+          .where((q) => q.question.isNotEmpty || q.answer.isNotEmpty)
+          .toList();
+
       await widget.onSave(
         id: widget.initialEntry?.id,
         title: _titleController.text.trim(),
@@ -145,6 +205,7 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
         password: _passwordController.text.isEmpty ? null : _passwordController.text,
         url: _urlController.text.trim().isEmpty ? null : _urlController.text.trim(),
         notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        securityQuestions: questions,
         tags: tagsList,
         favorite: _favorite,
       );
@@ -426,6 +487,175 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                           onChanged: (_) => setState(() {}),
                           decoration: _inputDecoration('https://example.com'),
                         ),
+                        const SizedBox(height: 14),
+
+                        // Security Questions
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildLabel('Security Questions (${_securityQuestions.length})'),
+                            TextButton.icon(
+                              onPressed: _addQuestion,
+                              icon: const Icon(Icons.add_rounded, size: 14, color: Color(0xFF10B981)),
+                              label: const Text('Add Question', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.w600)),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_securityQuestions.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          ...List.generate(_securityQuestions.length, (idx) {
+                            final q = _securityQuestions[idx];
+                            final isRevealed = _revealedAnswers[idx] ?? false;
+                            final isCopied = _copiedAnswerIndex == idx;
+                            final currentQ = q['question'] as String? ?? '';
+                            final isPreset = _presetQuestions.contains(currentQ);
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF18181B),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonFormField<String>(
+                                          value: isPreset ? currentQ : 'Custom question...',
+                                          dropdownColor: const Color(0xFF18181B),
+                                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                                          decoration: InputDecoration(
+                                            isDense: true,
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                            ),
+                                          ),
+                                          items: _presetQuestions.map((pq) {
+                                            return DropdownMenuItem(
+                                              value: pq,
+                                              child: Text(pq, overflow: TextOverflow.ellipsis),
+                                            );
+                                          }).toList(),
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setState(() {
+                                                _securityQuestions[idx]['question'] = val == 'Custom question...' ? '' : val;
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF43F5E), size: 16),
+                                        onPressed: () => _removeQuestion(idx),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                    ],
+                                  ),
+                                  if (!isPreset || currentQ == 'Custom question...') ...[
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      initialValue: currentQ,
+                                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                                      decoration: _inputDecoration('Type your custom question...'),
+                                      onChanged: (val) => _securityQuestions[idx]['question'] = val,
+                                    ),
+                                  ],
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          key: ValueKey('ans-$idx-${q['answer']}'),
+                                          initialValue: q['answer'] as String? ?? '',
+                                          obscureText: !isRevealed,
+                                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                                          decoration: _inputDecoration(
+                                            'Answer (encrypted)',
+                                            suffix: IconButton(
+                                              icon: Icon(
+                                                isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                                color: Colors.white38,
+                                                size: 15,
+                                              ),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _revealedAnswers[idx] = !isRevealed;
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                          onChanged: (val) => _securityQuestions[idx]['answer'] = val,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      if ((q['answer'] as String? ?? '').isNotEmpty)
+                                        InkWell(
+                                          onTap: () {
+                                            Clipboard.setData(ClipboardData(text: q['answer'] ?? ''));
+                                            setState(() => _copiedAnswerIndex = idx);
+                                            Future.delayed(const Duration(seconds: 1), () {
+                                              if (mounted) setState(() => _copiedAnswerIndex = null);
+                                            });
+                                          },
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF27272A),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              isCopied ? Icons.check_rounded : Icons.copy_rounded,
+                                              size: 14,
+                                              color: isCopied ? const Color(0xFF10B981) : Colors.white70,
+                                            ),
+                                          ),
+                                        ),
+                                      const SizedBox(width: 4),
+                                      InkWell(
+                                        onTap: () => _generateFakeAnswer(idx),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981).withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981), size: 12),
+                                              SizedBox(width: 4),
+                                              Text('Fake', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
                         const SizedBox(height: 14),
 
                         // Tags

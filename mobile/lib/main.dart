@@ -23,11 +23,39 @@ Future<void> main() async {
   );
 }
 
-class PMVaultApp extends ConsumerWidget {
+class PMVaultApp extends ConsumerStatefulWidget {
   const PMVaultApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PMVaultApp> createState() => _PMVaultAppState();
+}
+
+class _PMVaultAppState extends ConsumerState<PMVaultApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Security Hardening: Immediately lock vault when app is backgrounded or minimized
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      final isUnlocked = ref.read(vaultProvider).isUnlocked;
+      if (isUnlocked) {
+        ref.read(vaultProvider.notifier).lockVault();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vault = ref.watch(vaultProvider);
 
     return MaterialApp(

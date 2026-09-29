@@ -50,7 +50,10 @@ pub fn run() {
             reset_vault,
             change_master_password,
             get_session_credentials,
-            derive_auth_verifier_from_salt
+            derive_auth_verifier_from_salt,
+            setup_recovery_questions,
+            get_recovery_questions,
+            recover_vault_with_questions
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,21 @@
 import 'dart:convert';
 
+class SecurityQuestion {
+  final String question;
+  final String answer;
+
+  SecurityQuestion({required this.question, required this.answer});
+
+  Map<String, dynamic> toMap() => {'question': question, 'answer': answer};
+
+  factory SecurityQuestion.fromMap(Map<String, dynamic> map) {
+    return SecurityQuestion(
+      question: map['question'] as String? ?? '',
+      answer: map['answer'] as String? ?? '',
+    );
+  }
+}
+
 class VaultEntry {
   final String id;
   final String title;
@@ -7,6 +23,7 @@ class VaultEntry {
   final String? password;
   final String? url;
   final String? notes;
+  final List<SecurityQuestion> securityQuestions;
   final List<String> tags;
   final bool favorite;
   final String ciphertext;
@@ -24,6 +41,7 @@ class VaultEntry {
     this.password,
     this.url,
     this.notes,
+    this.securityQuestions = const [],
     this.tags = const [],
     this.favorite = false,
     required this.ciphertext,
@@ -43,6 +61,7 @@ class VaultEntry {
       'password': password,
       'url': url,
       'notes': notes,
+      'security_questions': jsonEncode(securityQuestions.map((q) => q.toMap()).toList()),
       'tags': jsonEncode(tags),
       'favorite': favorite ? 1 : 0,
       'ciphertext': ciphertext,
@@ -66,6 +85,18 @@ class VaultEntry {
       } catch (_) {}
     }
 
+    List<SecurityQuestion> parsedQuestions = [];
+    if (map['security_questions'] != null) {
+      try {
+        final decoded = jsonDecode(map['security_questions']);
+        if (decoded is List) {
+          parsedQuestions = decoded
+              .map((e) => SecurityQuestion.fromMap(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+      } catch (_) {}
+    }
+
     return VaultEntry(
       id: map['id'] as String,
       title: map['title'] as String? ?? 'Untitled',
@@ -73,6 +104,7 @@ class VaultEntry {
       password: map['password'] as String?,
       url: map['url'] as String?,
       notes: map['notes'] as String?,
+      securityQuestions: parsedQuestions,
       tags: parsedTags,
       favorite: (map['favorite'] == 1 || map['favorite'] == true),
       ciphertext: map['ciphertext'] as String? ?? '',
@@ -91,6 +123,7 @@ class VaultEntry {
     String? password,
     String? url,
     String? notes,
+    List<SecurityQuestion>? securityQuestions,
     List<String>? tags,
     bool? favorite,
     String? ciphertext,
@@ -108,6 +141,7 @@ class VaultEntry {
       password: password ?? this.password,
       url: url ?? this.url,
       notes: notes ?? this.notes,
+      securityQuestions: securityQuestions ?? this.securityQuestions,
       tags: tags ?? this.tags,
       favorite: favorite ?? this.favorite,
       ciphertext: ciphertext ?? this.ciphertext,

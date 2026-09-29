@@ -11,6 +11,9 @@ build/
 *.msi
 *.deb
 !PM_0.1.0_amd64.deb
+!PM_Vault_Desktop_Portable.exe
+!PM_Vault_Desktop_Setup.exe
+!PM_Vault_Mobile.apk
 *.AppImage
 *.db
 *.zip

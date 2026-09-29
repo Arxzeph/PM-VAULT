@@ -1,12 +1,16 @@
 use crate::crypto::{
-    decrypt_dek, decrypt_entry, derive_auth_verifier, derive_master_key, encrypt_dek,
-    encrypt_entry, generate_dek, generate_password as gen_pwd, generate_salt,
+    decrypt_dek, derive_auth_verifier, derive_master_key,
+    derive_recovery_keys, encrypt_dek, encrypt_dek_recovery,
+    format_recovery_code, generate_dek,
+    generate_password as gen_pwd, generate_recovery_secret, generate_salt,
 };
-use crate::db::{self, EntryPayload, SecurityQuestion, VaultEntryDto};
+use crate::db::{self, EncryptedEntryRow, SecurityQuestion, VaultEntryDto};
 use crate::state::{AppState, VaultSession};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Mutex;
 use tauri::State;
 use uuid::Uuid;
 
@@ -24,6 +28,10 @@ pub struct InitVaultResponse {
     pub master_salt: String,
     pub encrypted_dek: String,
     pub dek_nonce: String,
+    pub recovery_code: String,
+    pub recovery_auth_hash: String,
+    pub recovery_wrapped_dek: String,
+    pub recovery_nonce: String,
 }
 
 #[derive(Serialize)]
@@ -125,20 +133,36 @@ pub fn init_vault(
     let enc_dek_b64 = BASE64.encode(&enc_dek);
     let dek_nonce_b64 = BASE64.encode(dek_nonce);
 
-    // 5. Save to local metadata database
     let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let owner_id = db::get_or_create_owner_id(&conn)?;
+
+    // 5. Generate 32-Byte Offline Recovery Secret (CSPRNG)
+    let recovery_secret = generate_recovery_secret();
+    let recovery_code = format_recovery_code(&recovery_secret);
+    let (rek, _auth_token, auth_hash) = derive_recovery_keys(&recovery_secret, &owner_id)?;
+    let (rec_enc_dek, rec_nonce) = encrypt_dek_recovery(&dek, &rek, &owner_id, 1)?;
+    let rec_enc_dek_b64 = BASE64.encode(&rec_enc_dek);
+    let rec_nonce_b64 = BASE64.encode(rec_nonce);
+
+    // 6. Save metadata to SQLite
     db::set_meta(&conn, "user_email", &email_clean)?;
+    db::set_meta(&conn, "owner_id", &owner_id)?;
     db::set_meta(&conn, "master_salt", &salt_b64)?;
     db::set_meta(&conn, "encrypted_dek", &enc_dek_b64)?;
     db::set_meta(&conn, "dek_nonce", &dek_nonce_b64)?;
+    db::set_meta(&conn, "recovery_auth_hash", &auth_hash)?;
+    db::set_meta(&conn, "recovery_wrapped_dek", &rec_enc_dek_b64)?;
+    db::set_meta(&conn, "recovery_nonce", &rec_nonce_b64)?;
 
-    // 6. Save active session
+    // 7. Save active session with clean in-memory cache
     let mut session = state.session.lock().map_err(|e| e.to_string())?;
     *session = Some(VaultSession {
         email: email_clean,
+        owner_id,
         auth_verifier: auth_verifier.clone(),
         master_key,
         dek,
+        decrypted_cache: Mutex::new(HashMap::new()),
     });
 
     Ok(InitVaultResponse {
@@ -147,6 +171,10 @@ pub fn init_vault(
         master_salt: salt_b64,
         encrypted_dek: enc_dek_b64,
         dek_nonce: dek_nonce_b64,
+        recovery_code,
+        recovery_auth_hash: auth_hash,
+        recovery_wrapped_dek: rec_enc_dek_b64,
+        recovery_nonce: rec_nonce_b64,
     })
 }
 
@@ -155,7 +183,7 @@ pub fn unlock_vault(
     master_password: String,
     state: State<'_, AppState>,
 ) -> Result<UnlockVaultResponse, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
     let salt_b64 = db::get_meta(&conn, "master_salt")?
         .ok_or_else(|| "Vault not initialized. Please create or import a vault.".to_string())?;
     let enc_dek_b64 = db::get_meta(&conn, "encrypted_dek")?
@@ -164,6 +192,7 @@ pub fn unlock_vault(
         .ok_or_else(|| "Corrupted vault: missing DEK nonce".to_string())?;
     let email = db::get_meta(&conn, "user_email")?
         .unwrap_or_default();
+    let owner_id = db::get_or_create_owner_id(&conn)?;
 
     let salt = BASE64.decode(&salt_b64).map_err(|e| e.to_string())?;
     let enc_dek = BASE64.decode(&enc_dek_b64).map_err(|e| e.to_string())?;
@@ -184,13 +213,29 @@ pub fn unlock_vault(
     // Derive Auth Verifier
     let auth_verifier = derive_auth_verifier(&master_key, &email)?;
 
+    // Blocking migration if legacy local_entries table exists
+    if db::has_legacy_entries_table(&conn)? {
+        let _ = db::migrate_legacy_to_encrypted(&mut conn, &dek, &owner_id)?;
+    }
+
+    // Pre-populate decrypted in-memory cache
+    let mut cache = HashMap::new();
+    let encrypted_rows = db::list_encrypted_rows(&conn)?;
+    for row in encrypted_rows {
+        if let Ok(dto) = db::decrypt_entry_row(&row, &dek) {
+            cache.insert(dto.id.clone(), dto);
+        }
+    }
+
     // Set Session
     let mut session = state.session.lock().map_err(|e| e.to_string())?;
     *session = Some(VaultSession {
         email: email.clone(),
+        owner_id,
         auth_verifier: auth_verifier.clone(),
         master_key,
         dek,
+        decrypted_cache: Mutex::new(cache),
     });
 
     Ok(UnlockVaultResponse {
@@ -211,11 +256,25 @@ pub fn lock_vault(state: State<'_, AppState>) -> Result<bool, String> {
 
 #[tauri::command]
 pub fn list_entries(state: State<'_, AppState>) -> Result<Vec<VaultEntryDto>, String> {
-    if !state.is_unlocked() {
-        return Err("Vault is locked".into());
-    }
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    db::list_active_entries(&conn)
+    let session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_ref().ok_or_else(|| "Vault is locked".to_string())?;
+
+    let cache = session.decrypted_cache.lock().map_err(|e| e.to_string())?;
+    let mut list: Vec<VaultEntryDto> = cache
+        .values()
+        .filter(|e| !e.is_deleted)
+        .cloned()
+        .collect();
+
+    list.sort_by(|a, b| {
+        if a.favorite != b.favorite {
+            b.favorite.cmp(&a.favorite)
+        } else {
+            a.title.to_lowercase().cmp(&b.title.to_lowercase())
+        }
+    });
+
+    Ok(list)
 }
 
 #[tauri::command]
@@ -229,31 +288,12 @@ pub fn save_entry(
     let entry_id = input.id.unwrap_or_else(|| Uuid::new_v4().to_string());
     let now = Utc::now().to_rfc3339();
 
-    // Prepare JSON payload for encryption
-    let payload = EntryPayload {
-        title: input.title.clone(),
-        username: input.username.clone(),
-        password: input.password.clone(),
-        url: input.url.clone(),
-        notes: input.notes.clone(),
-        security_questions: input.security_questions.clone(),
-        tags: input.tags.clone(),
-        favorite: input.favorite,
-    };
-    let payload_json = serde_json::to_string(&payload)
-        .map_err(|e| format!("Failed to serialize entry payload: {}", e))?;
+    let mut cache = session.decrypted_cache.lock().map_err(|e| e.to_string())?;
+    let existing = cache.get(&entry_id);
+    let revision = existing.map(|e| (e.version as u64) + 1).unwrap_or(1);
 
-    // Encrypt entry payload with DEK using entry_id as AAD
-    let (ciphertext, nonce) = encrypt_entry(&payload_json, &session.dek, &entry_id)?;
-    let ct_b64 = BASE64.encode(&ciphertext);
-    let nonce_b64 = BASE64.encode(nonce);
-
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    let existing = db::get_entry_by_id(&conn, &entry_id)?;
-    let version = existing.map(|e| e.version + 1).unwrap_or(1);
-
-    let entry = VaultEntryDto {
-        id: entry_id,
+    let entry_dto = VaultEntryDto {
+        id: entry_id.clone(),
         title: input.title,
         username: input.username,
         password: input.password,
@@ -262,27 +302,48 @@ pub fn save_entry(
         security_questions: input.security_questions,
         tags: input.tags,
         favorite: input.favorite,
-        ciphertext: ct_b64,
-        nonce: nonce_b64,
-        version,
+        ciphertext: String::new(),
+        nonce: String::new(),
+        version: revision as i32,
         is_deleted: false,
         sync_status: "pending_update".to_string(),
         client_updated_at: now,
         server_updated_at: None,
     };
 
-    db::upsert_entry(&conn, &entry)?;
-    Ok(entry)
+    // Encrypt into zero-plaintext row format using canonical JSON + domain AAD
+    let enc_row = db::encrypt_entry_dto(&entry_dto, &session.dek, &session.owner_id, revision)?;
+
+    let mut final_dto = entry_dto;
+    final_dto.ciphertext = enc_row.ciphertext.clone();
+    final_dto.nonce = enc_row.nonce.clone();
+
+    // Persist to encrypted_entries table
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::upsert_encrypted_row(&conn, &enc_row)?;
+
+    // Update in-memory decrypted cache
+    cache.insert(entry_id, final_dto.clone());
+
+    Ok(final_dto)
 }
 
 #[tauri::command]
 pub fn delete_entry(id: String, state: State<'_, AppState>) -> Result<bool, String> {
-    if !state.is_unlocked() {
-        return Err("Vault is locked".into());
-    }
+    let session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_ref().ok_or_else(|| "Vault is locked".to_string())?;
+
     let now = Utc::now().to_rfc3339();
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    db::soft_delete_entry(&conn, &id, &now)?;
+    db::soft_delete_encrypted_row(&conn, &id, &now)?;
+
+    let mut cache = session.decrypted_cache.lock().map_err(|e| e.to_string())?;
+    if let Some(entry) = cache.get_mut(&id) {
+        entry.is_deleted = true;
+        entry.sync_status = "pending_delete".to_string();
+        entry.client_updated_at = now;
+    }
+
     Ok(true)
 }
 
@@ -327,18 +388,35 @@ pub fn import_remote_vault_meta(
     let dek = decrypt_dek(&enc_dek, &nonce_arr, &master_key)?;
     let auth_verifier = derive_auth_verifier(&master_key, &email_clean)?;
 
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let owner_id = db::get_or_create_owner_id(&conn)?;
+
     db::set_meta(&conn, "user_email", &email_clean)?;
+    db::set_meta(&conn, "owner_id", &owner_id)?;
     db::set_meta(&conn, "master_salt", &master_salt)?;
     db::set_meta(&conn, "encrypted_dek", &encrypted_dek)?;
     db::set_meta(&conn, "dek_nonce", &dek_nonce)?;
 
+    if db::has_legacy_entries_table(&conn)? {
+        let _ = db::migrate_legacy_to_encrypted(&mut conn, &dek, &owner_id)?;
+    }
+
+    let mut cache = HashMap::new();
+    let encrypted_rows = db::list_encrypted_rows(&conn)?;
+    for row in encrypted_rows {
+        if let Ok(dto) = db::decrypt_entry_row(&row, &dek) {
+            cache.insert(dto.id.clone(), dto);
+        }
+    }
+
     let mut session = state.session.lock().map_err(|e| e.to_string())?;
     *session = Some(VaultSession {
         email: email_clean.clone(),
+        owner_id,
         auth_verifier: auth_verifier.clone(),
         master_key,
         dek,
+        decrypted_cache: Mutex::new(cache),
     });
 
     Ok(UnlockVaultResponse {
@@ -365,11 +443,20 @@ pub fn derive_auth_verifier_from_salt(
 
 #[tauri::command]
 pub fn get_pending_sync(state: State<'_, AppState>) -> Result<Vec<VaultEntryDto>, String> {
-    if !state.is_unlocked() {
-        return Err("Vault is locked".into());
-    }
+    let session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_ref().ok_or_else(|| "Vault is locked".to_string())?;
+
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    db::get_pending_sync(&conn)
+    let envelopes = db::get_pending_sync_envelopes(&conn)?;
+
+    let mut result = Vec::new();
+    for env in envelopes {
+        if let Ok(dto) = db::decrypt_entry_row(&env, &session.dek) {
+            result.push(dto);
+        }
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -379,10 +466,16 @@ pub fn mark_entry_synced(
     state: State<'_, AppState>,
 ) -> Result<bool, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    if let Some(mut entry) = db::get_entry_by_id(&conn, &id)? {
-        entry.sync_status = "synced".to_string();
-        entry.server_updated_at = Some(server_updated_at);
-        db::upsert_entry(&conn, &entry)?;
+    db::mark_envelopes_synced(&conn, &[id.clone()], &server_updated_at)?;
+
+    let session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    if let Some(ref session) = *session_guard {
+        if let Ok(mut cache) = session.decrypted_cache.lock() {
+            if let Some(entry) = cache.get_mut(&id) {
+                entry.sync_status = "synced".to_string();
+                entry.server_updated_at = Some(server_updated_at);
+            }
+        }
     }
     Ok(true)
 }
@@ -407,57 +500,44 @@ pub fn apply_remote_entry(
     let session = session_guard.as_ref().ok_or_else(|| "Vault is locked".to_string())?;
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    let existing = db::get_entry_by_id(&conn, &remote.id)?;
+    let existing = db::get_encrypted_row_by_id(&conn, &remote.id)?;
 
-    // Last-Write-Wins (LWW) conflict resolution:
     if let Some(ref local) = existing {
         if local.client_updated_at >= remote.client_updated_at {
-            // Local is newer or equal, ignore remote
             return Ok(None);
         }
     }
 
-    // Decrypt remote ciphertext using DEK
-    let ct = BASE64.decode(&remote.ciphertext).map_err(|e| e.to_string())?;
-    let nonce_vec = BASE64.decode(&remote.nonce).map_err(|e| e.to_string())?;
-    if nonce_vec.len() != 24 {
-        return Err("Invalid nonce length from remote".into());
-    }
-    let mut nonce_arr = [0u8; 24];
-    nonce_arr.copy_from_slice(&nonce_vec);
-
-    let decrypted_json = decrypt_entry(&ct, &nonce_arr, &session.dek, &remote.id)?;
-    let payload: EntryPayload = serde_json::from_str(&decrypted_json)
-        .map_err(|e| format!("Failed to parse decrypted remote payload: {}", e))?;
-
-    let entry = VaultEntryDto {
-        id: remote.id,
-        title: payload.title,
-        username: payload.username,
-        password: payload.password,
-        url: payload.url,
-        notes: payload.notes,
-        security_questions: payload.security_questions,
-        tags: payload.tags,
-        favorite: payload.favorite,
-        ciphertext: remote.ciphertext,
-        nonce: remote.nonce,
-        version: remote.version,
+    let enc_row = EncryptedEntryRow {
+        id: remote.id.clone(),
+        owner_id: session.owner_id.clone(),
+        crypto_version: 2,
+        payload_schema_version: 2,
+        nonce: remote.nonce.clone(),
+        ciphertext: remote.ciphertext.clone(),
+        revision: remote.version as u64,
         is_deleted: remote.is_deleted,
-        sync_status: "synced".to_string(),
-        client_updated_at: remote.client_updated_at,
-        server_updated_at: Some(remote.server_updated_at),
+        sync_state: "synced".to_string(),
+        client_updated_at: remote.client_updated_at.clone(),
+        server_updated_at: Some(remote.server_updated_at.clone()),
     };
 
-    db::upsert_entry(&conn, &entry)?;
-    Ok(Some(entry))
+    let dto = db::decrypt_entry_row(&enc_row, &session.dek)?;
+    db::upsert_encrypted_row(&conn, &enc_row)?;
+
+    let mut cache = session.decrypted_cache.lock().map_err(|e| e.to_string())?;
+    cache.insert(remote.id, dto.clone());
+
+    Ok(Some(dto))
 }
 
 #[tauri::command]
 pub fn reset_vault(state: State<'_, AppState>) -> Result<bool, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM local_meta", []).map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM local_entries", []).map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM encrypted_entries", []).map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM conflict_envelopes", []).map_err(|e| e.to_string())?;
+    let _ = conn.execute("DROP TABLE IF EXISTS local_entries", []);
     state.lock();
     Ok(true)
 }
@@ -501,16 +581,12 @@ pub fn change_master_password(
     let mut old_nonce = [0u8; 24];
     old_nonce.copy_from_slice(&dek_nonce_vec);
 
-    // 1. Verify current password by decrypting the existing DEK
     let old_mk = derive_master_key(&current_password, &old_salt)?;
     let dek = decrypt_dek(&enc_dek, &old_nonce, &old_mk)
         .map_err(|_| "Current master password is incorrect.".to_string())?;
 
-    // 2. Generate brand new salt and derive new MK
     let new_salt = generate_salt();
     let new_mk = derive_master_key(&new_password, &new_salt)?;
-
-    // 3. Re-encrypt the existing DEK under the new MK
     let (new_enc_dek, new_nonce) = encrypt_dek(&dek, &new_mk)?;
     let new_auth_verifier = derive_auth_verifier(&new_mk, &email)?;
 
@@ -518,19 +594,15 @@ pub fn change_master_password(
     let new_enc_dek_b64 = BASE64.encode(&new_enc_dek);
     let new_nonce_b64 = BASE64.encode(new_nonce);
 
-    // 4. Update local_meta
     db::set_meta(&conn, "master_salt", &new_salt_b64)?;
     db::set_meta(&conn, "encrypted_dek", &new_enc_dek_b64)?;
     db::set_meta(&conn, "dek_nonce", &new_nonce_b64)?;
 
-    // 5. Update session in memory
     let mut session = state.session.lock().map_err(|e| e.to_string())?;
-    *session = Some(VaultSession {
-        email: email.clone(),
-        auth_verifier: new_auth_verifier.clone(),
-        master_key: new_mk,
-        dek,
-    });
+    if let Some(ref mut s) = *session {
+        s.master_key = new_mk;
+        s.auth_verifier = new_auth_verifier.clone();
+    }
 
     Ok(ChangePasswordResponse {
         success: true,
@@ -554,7 +626,6 @@ pub fn setup_recovery_questions(
         return Err("Please provide at least one security question and answer.".into());
     }
 
-    // Normalize and build combined recovery string
     let mut combined = String::new();
     for (q, a) in questions.iter().zip(answers.iter()) {
         let clean_a = a.trim().to_lowercase();
@@ -617,6 +688,7 @@ pub fn recover_vault_with_questions(
     let rec_nonce_b64 = db::get_meta(&conn, "recovery_nonce")?
         .ok_or_else(|| "Corrupted recovery metadata.".to_string())?;
     let email = db::get_meta(&conn, "user_email")?.unwrap_or_default();
+    let owner_id = db::get_or_create_owner_id(&conn)?;
 
     let questions: Vec<String> = serde_json::from_str(&q_json)
         .map_err(|e| format!("Invalid recovery questions data: {}", e))?;
@@ -644,26 +716,35 @@ pub fn recover_vault_with_questions(
     let dek = decrypt_dek(&rec_enc_dek, &nonce_arr, &recovery_mk)
         .map_err(|_| "Security question answers are incorrect.".to_string())?;
 
-    // Now re-encrypt the recovered DEK under the new master password
     let new_salt = generate_salt();
     let new_mk = derive_master_key(&new_master_password, &new_salt)?;
     let (new_enc_dek, new_nonce) = encrypt_dek(&dek, &new_mk)?;
     let new_auth_verifier = derive_auth_verifier(&new_mk, &email)?;
 
     let new_salt_b64 = BASE64.encode(new_salt);
-    let new_enc_dek_b64 = BASE64.encode(new_enc_dek);
+    let new_enc_dek_b64 = BASE64.encode(&new_enc_dek);
     let new_nonce_b64 = BASE64.encode(new_nonce);
 
     db::set_meta(&conn, "master_salt", &new_salt_b64)?;
     db::set_meta(&conn, "encrypted_dek", &new_enc_dek_b64)?;
     db::set_meta(&conn, "dek_nonce", &new_nonce_b64)?;
 
+    let mut cache = HashMap::new();
+    let encrypted_rows = db::list_encrypted_rows(&conn)?;
+    for row in encrypted_rows {
+        if let Ok(dto) = db::decrypt_entry_row(&row, &dek) {
+            cache.insert(dto.id.clone(), dto);
+        }
+    }
+
     let mut session = state.session.lock().map_err(|e| e.to_string())?;
     *session = Some(VaultSession {
         email: email.clone(),
+        owner_id,
         auth_verifier: new_auth_verifier.clone(),
         master_key: new_mk,
         dek,
+        decrypted_cache: Mutex::new(cache),
     });
 
     Ok(UnlockVaultResponse {

@@ -1,5 +1,21 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/vault_entry.dart';
+import '../models/encrypted_envelope.dart';
+
+class RemoteVaultMeta {
+  final String masterSalt;
+  final String encryptedDek;
+  final String dekNonce;
+  final int dekWrapVersion;
+  final int keyGeneration;
+
+  const RemoteVaultMeta({
+    required this.masterSalt,
+    required this.encryptedDek,
+    required this.dekNonce,
+    this.dekWrapVersion = 1,
+    this.keyGeneration = 1,
+  });
+}
 
 class SupabaseService {
   static const String supabaseUrl = 'https://fdavvijioofchmkgmihg.supabase.co';
@@ -28,9 +44,7 @@ class SupabaseService {
       if (res != null && res.toString().isNotEmpty) {
         return res.toString();
       }
-    } catch (e) {
-      print('[SupabaseService] fetchUserSalt notice: $e');
-    }
+    } catch (_) {}
     return null;
   }
 
@@ -46,7 +60,8 @@ class SupabaseService {
     } on AuthException catch (e) {
       if (e.message.toLowerCase().contains('invalid login credentials') ||
           e.code == 'invalid_credentials') {
-        throw Exception("Incorrect Master Password. Please check your password and try again.");
+        throw Exception(
+            "Incorrect Master Password. Please check your password and try again.");
       }
       rethrow;
     }
@@ -62,7 +77,7 @@ class SupabaseService {
     return res.user;
   }
 
-  /// Authenticates using email and the client-derived auth verifier
+  /// Authenticates using email and client-derived auth verifier
   static Future<User?> signUpOrSignIn(String email, String authVerifier) async {
     final cleanEmail = email.trim().toLowerCase();
 
@@ -73,39 +88,35 @@ class SupabaseService {
         password: authVerifier,
       );
       if (res.user != null) {
-        print('[SupabaseService] Signed in as ${res.user!.id}');
         return res.user;
       }
-    } catch (signInErr) {
-      print('[SupabaseService] signInWithPassword notice: $signInErr');
-    }
+    } catch (_) {}
 
     // 2. If sign in fails, attempt sign up
-    try {
-      final res = await client.auth.signUp(
-        email: cleanEmail,
-        password: authVerifier,
-      );
-      print('[SupabaseService] Signed up as ${res.user?.id}');
-      return res.user;
-    } catch (e) {
-      print('[SupabaseService] SignUp error: $e');
-      rethrow;
-    }
+    final res = await client.auth.signUp(
+      email: cleanEmail,
+      password: authVerifier,
+    );
+    return res.user;
   }
 
-  static Future<Map<String, dynamic>?> fetchRemoteVaultMeta(String userId) async {
-    try {
-      final res = await client
-          .from('vault_metadata')
-          .select('master_salt, encrypted_dek, dek_nonce')
-          .eq('id', userId)
-          .maybeSingle();
-      return res;
-    } catch (e) {
-      print('[SupabaseService] fetchRemoteVaultMeta error: $e');
-      return null;
-    }
+  static Future<RemoteVaultMeta?> fetchRemoteVaultMeta(String userId) async {
+    final res = await client
+        .from('vault_metadata')
+        .select(
+            'master_salt, encrypted_dek, dek_nonce, dek_wrap_version, key_generation')
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (res == null) return null;
+
+    return RemoteVaultMeta(
+      masterSalt: res['master_salt'] as String,
+      encryptedDek: res['encrypted_dek'] as String,
+      dekNonce: res['dek_nonce'] as String,
+      dekWrapVersion: (res['dek_wrap_version'] as int?) ?? 1,
+      keyGeneration: (res['key_generation'] as int?) ?? 1,
+    );
   }
 
   static Future<void> saveRemoteVaultMeta({
@@ -113,53 +124,89 @@ class SupabaseService {
     required String masterSalt,
     required String encryptedDek,
     required String dekNonce,
+    int dekWrapVersion = 2,
+    int keyGeneration = 1,
   }) async {
-    try {
-      await client.from('vault_metadata').upsert({
-        'id': userId,
-        'master_salt': masterSalt,
-        'encrypted_dek': encryptedDek,
-        'dek_nonce': dekNonce,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      });
-    } catch (e) {
-      print('[SupabaseService] saveRemoteVaultMeta error: $e');
-    }
+    await client.from('vault_metadata').upsert({
+      'id': userId,
+      'master_salt': masterSalt,
+      'encrypted_dek': encryptedDek,
+      'dek_nonce': dekNonce,
+      'dek_wrap_version': dekWrapVersion,
+      'key_generation': keyGeneration,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
-  static Future<String?> pushEntry(String userId, VaultEntry entry) async {
+  /// Pushes an EncryptedEnvelope using optimistic concurrency RPC
+  static Future<Map<String, dynamic>> pushEnvelope({
+    required String userId,
+    required EncryptedEnvelope envelope,
+    int? expectedPreviousRevision,
+  }) async {
+    // 1. Try RPC with optimistic concurrency
     try {
-      final res = await client
-          .from('vault_entries')
-          .upsert({
-            'id': entry.id,
-            'user_id': userId,
-            'ciphertext': entry.ciphertext,
-            'nonce': entry.nonce,
-            'version': entry.version,
-            'is_deleted': entry.isDeleted,
-            'client_updated_at': entry.clientUpdatedAt,
-          })
-          .select('server_updated_at')
-          .single();
+      final res = await client.rpc(
+        'upsert_vault_envelope',
+        params: {
+          'p_id': envelope.id,
+          'p_crypto_version': envelope.cryptoVersion,
+          'p_payload_schema_version': envelope.payloadSchemaVersion,
+          'p_nonce': envelope.nonce,
+          'p_ciphertext': envelope.ciphertext,
+          'p_revision': envelope.revision,
+          'p_is_deleted': envelope.isDeleted,
+          'p_client_updated_at': envelope.clientUpdatedAt,
+          'p_expected_previous_revision': expectedPreviousRevision,
+        },
+      );
 
-      return res['server_updated_at'] as String?;
-    } catch (e) {
-      print('[SupabaseService] pushEntry error: $e');
-      return null;
+      if (res is List && res.isNotEmpty) {
+        final row = Map<String, dynamic>.from(res.first as Map);
+        return {
+          'success': row['success'] == true,
+          'status': row['status'] as String? ?? 'unknown',
+          'current_revision': row['current_revision'],
+          'server_updated_at': row['server_updated_at'] as String?,
+        };
+      }
+    } catch (_) {
+      // Fallback to direct table upsert if RPC is unavailable
     }
+
+    // Direct table upsert fallback
+    final direct = await client
+        .from('vault_entries')
+        .upsert(envelope.toRemoteMap())
+        .select('server_updated_at')
+        .single();
+
+    return {
+      'success': true,
+      'status': 'updated',
+      'current_revision': envelope.revision,
+      'server_updated_at': direct['server_updated_at'] as String?,
+    };
   }
 
-  static Future<List<Map<String, dynamic>>> fetchAllRemoteEntries(String userId) async {
-    try {
-      final res = await client
-          .from('vault_entries')
-          .select('*')
-          .eq('user_id', userId);
-      return List<Map<String, dynamic>>.from(res);
-    } catch (e) {
-      print('[SupabaseService] fetchAllRemoteEntries error: $e');
-      return [];
+  /// Fetches all remote envelopes strictly validating user ownership
+  static Future<List<EncryptedEnvelope>> fetchAllRemoteEnvelopes(
+      String userId) async {
+    final res =
+        await client.from('vault_entries').select('*').eq('user_id', userId);
+
+    final envelopes = <EncryptedEnvelope>[];
+    for (final row in res) {
+      final map = Map<String, dynamic>.from(row);
+      try {
+        envelopes.add(EncryptedEnvelope.fromRemoteMap(
+          map,
+          authenticatedUserId: userId,
+        ));
+      } catch (_) {
+        // Untrusted/malformed envelope is quarantined and skipped
+      }
     }
+    return envelopes;
   }
 }

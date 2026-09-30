@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { api } from "../services/api";
+import { copyWithAutoWipe } from "../services/clipboard";
 import { Copy, Check, RefreshCw, X, Sparkles } from "lucide-react";
 
 interface PasswordGeneratorProps {
@@ -42,7 +43,7 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
 
   const copyToClipboard = async () => {
     if (!password) return;
-    await navigator.clipboard.writeText(password);
+    await copyWithAutoWipe(password);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

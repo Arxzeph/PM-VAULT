@@ -1,0 +1,40 @@
+name: Protocol & Parity CI
+
+on:
+  push:
+    paths:
+      - 'tests/**'
+      - 'mobile/lib/crypto/**'
+      - 'desktop/src-tauri/src/crypto.rs'
+      - '.github/workflows/protocol-ci.yml'
+  pull_request:
+    paths:
+      - 'tests/**'
+      - 'mobile/lib/crypto/**'
+      - 'desktop/src-tauri/src/crypto.rs'
+      - '.github/workflows/protocol-ci.yml'
+
+jobs:
+  protocol-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Dart crypto parity tests
+        working-directory: mobile
+        run: |
+          flutter pub get
+          flutter test test/crypto_parity_test.dart
+
+      - name: Run Rust crypto tests
+        working-directory: desktop/src-tauri
+        run: cargo test --lib crypto::

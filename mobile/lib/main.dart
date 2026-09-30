@@ -30,7 +30,8 @@ class PMVaultApp extends ConsumerStatefulWidget {
   ConsumerState<PMVaultApp> createState() => _PMVaultAppState();
 }
 
-class _PMVaultAppState extends ConsumerState<PMVaultApp> with WidgetsBindingObserver {
+class _PMVaultAppState extends ConsumerState<PMVaultApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -46,7 +47,8 @@ class _PMVaultAppState extends ConsumerState<PMVaultApp> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Security Hardening: Immediately lock vault when app is backgrounded or minimized
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       final isUnlocked = ref.read(vaultProvider).isUnlocked;
       if (isUnlocked) {
         ref.read(vaultProvider.notifier).lockVault();

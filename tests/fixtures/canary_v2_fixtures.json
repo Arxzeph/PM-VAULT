@@ -1,0 +1,36 @@
+{
+  "owner_id": "7f1d2a3c-4b5e-6f7a-8b9c-0d1e2f3a4b5c",
+  "key_generation": 1,
+  "recovery_generation": 1,
+  "aad_templates": {
+    "entry": "pm-vault|entry|crypto=2|schema=2|owner=7f1d2a3c-4b5e-6f7a-8b9c-0d1e2f3a4b5c|entry=a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d|revision=1|deleted=0",
+    "master_dek_wrap": "pm-vault|dek-wrap|master|v2|7f1d2a3c-4b5e-6f7a-8b9c-0d1e2f3a4b5c|1",
+    "recovery_dek_wrap": "pm-vault|dek-wrap|recovery|v2|7f1d2a3c-4b5e-6f7a-8b9c-0d1e2f3a4b5c|1"
+  },
+  "recovery_constants": {
+    "wrap_info": "pm-vault-recovery-wrap-v2",
+    "auth_info": "pm-vault-recovery-auth-v2"
+  },
+  "test_entry": {
+    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "revision": 1,
+    "is_deleted": false,
+    "payload": {
+      "favorite": true,
+      "notes": "PMV_CANARY_NOTE_secret_vault_canary_39102",
+      "password": "PMV_CANARY_PASSWORD_alpha_928174",
+      "schema_version": 2,
+      "security_questions": [
+        {
+          "answer": "PMV_CANARY_ANSWER_rover_8821",
+          "question": "First pet name?"
+        }
+      ],
+      "tags": ["canary", "work"],
+      "title": "PMV_CANARY_TITLE_CriticalBank",
+      "url": "https://canary.example.com",
+      "username": "PMV_CANARY_USER_superadmin"
+    },
+    "canonical_json": "{\"favorite\":true,\"notes\":\"PMV_CANARY_NOTE_secret_vault_canary_39102\",\"password\":\"PMV_CANARY_PASSWORD_alpha_928174\",\"schema_version\":2,\"security_questions\":[{\"answer\":\"PMV_CANARY_ANSWER_rover_8821\",\"question\":\"First pet name?\"}],\"tags\":[\"canary\",\"work\"],\"title\":\"PMV_CANARY_TITLE_CriticalBank\",\"url\":\"https://canary.example.com\",\"username\":\"PMV_CANARY_USER_superadmin\"}"
+  }
+}

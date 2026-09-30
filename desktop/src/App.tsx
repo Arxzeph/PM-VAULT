@@ -19,7 +19,8 @@ export function App() {
 
   const refreshEntries = useCallback(async () => {
     try {
-      const list = await api.listEntries();
+      const res = await api.listEntries();
+      const list = Array.isArray(res) ? res : res.entries || [];
       setEntries(list);
     } catch (err) {
       console.error("Failed to list entries:", err);
@@ -178,41 +179,15 @@ export function App() {
   };
 
   const handleSaveEntry = async (input: SaveEntryInput) => {
-    const saved = await api.saveEntry(input);
+    await api.saveEntry(input);
     await refreshEntries();
-
-    // Push to Supabase via SyncEngine sweep or direct push
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data } = await supabase.auth.getSession();
-      const userId = data?.session?.user?.id;
-      if (userId) {
-        supabaseService.pushEntry(userId, saved).then((serverTime) => {
-          if (serverTime) {
-            api.markEntrySynced(saved.id, serverTime);
-          }
-        });
-      }
-    }
+    syncEngine.syncFullSweep();
   };
 
   const handleDeleteEntry = async (id: string) => {
     await api.deleteEntry(id);
     await refreshEntries();
-
-    // Push deletion to Supabase
-    const supabase = getSupabase();
-    if (supabase) {
-      const { data } = await supabase.auth.getSession();
-      const userId = data?.session?.user?.id;
-      if (userId) {
-        const deletedEntry = entries.find((e) => e.id === id);
-        if (deletedEntry) {
-          deletedEntry.is_deleted = true;
-          supabaseService.pushEntry(userId, deletedEntry);
-        }
-      }
-    }
+    syncEngine.syncFullSweep();
   };
 
   const handleTriggerSync = () => {

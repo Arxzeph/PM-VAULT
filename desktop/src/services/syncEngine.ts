@@ -111,27 +111,18 @@ class SyncEngine {
       // 1. Drain local offline queue (push items modified while offline)
       const pendingItems = await api.getPendingSync();
       for (const item of pendingItems) {
-        const serverTime = await supabaseService.pushEntry(this.currentUserId, item);
-        if (serverTime) {
-          await api.markEntrySynced(item.id, serverTime);
+        const res = await supabaseService.pushEnvelope(this.currentUserId, item);
+        if (res && res.success) {
+          await api.markEntrySynced(item.id, item.revision, res.server_updated_at);
         }
       }
 
-      // 2. Fetch all remote entries from Supabase
-      const remoteEntries = await supabaseService.fetchAllRemoteEntries(this.currentUserId);
+      // 2. Fetch all remote envelopes from Supabase
+      const remoteEnvelopes = await supabaseService.fetchAllRemoteEnvelopes(this.currentUserId);
       let hasNewData = false;
 
-      for (const remote of remoteEntries) {
-        const applied = await api.applyRemoteEntry({
-          id: remote.id,
-          ciphertext: remote.ciphertext,
-          nonce: remote.nonce,
-          version: remote.version,
-          is_deleted: remote.is_deleted,
-          client_updated_at: remote.client_updated_at,
-          server_updated_at: remote.server_updated_at,
-        });
-
+      for (const remote of remoteEnvelopes) {
+        const applied = await api.applyRemoteEnvelope(remote);
         if (applied) {
           hasNewData = true;
         }
@@ -169,26 +160,22 @@ class SyncEngine {
           filter: `user_id=eq.${userId}`,
         },
         async (payload) => {
-          const remoteRow = payload.new as {
-            id?: string;
-            ciphertext?: string;
-            nonce?: string;
-            version?: number;
-            is_deleted?: boolean;
-            client_updated_at?: string;
-            server_updated_at?: string;
-          };
+          const remoteRow = payload.new as any;
 
           if (remoteRow && remoteRow.id && remoteRow.ciphertext && remoteRow.nonce) {
             try {
-              const updated = await api.applyRemoteEntry({
+              const updated = await api.applyRemoteEnvelope({
                 id: remoteRow.id,
-                ciphertext: remoteRow.ciphertext,
+                owner_id: userId,
+                crypto_version: remoteRow.crypto_version ?? 2,
+                payload_schema_version: remoteRow.payload_schema_version ?? 2,
                 nonce: remoteRow.nonce,
-                version: remoteRow.version || 1,
-                is_deleted: remoteRow.is_deleted || false,
+                ciphertext: remoteRow.ciphertext,
+                revision: Number(remoteRow.revision ?? 1),
+                is_deleted: Boolean(remoteRow.is_deleted),
                 client_updated_at: remoteRow.client_updated_at || new Date().toISOString(),
                 server_updated_at: remoteRow.server_updated_at || new Date().toISOString(),
+                sync_state: "synced",
               });
 
               if (updated) {

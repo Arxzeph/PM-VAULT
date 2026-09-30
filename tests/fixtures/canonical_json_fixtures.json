@@ -1,0 +1,34 @@
+{
+  "test_cases": [
+    {
+      "name": "basic_key_sorting",
+      "input": { "z": "last", "a": "first", "m": "middle" },
+      "expected": "{\"a\":\"first\",\"m\":\"middle\",\"z\":\"last\"}"
+    },
+    {
+      "name": "unicode_ordering_and_escapes",
+      "input": { "café": "coffee", "apple": "fruit", "андрей": "name" },
+      "expected": "{\"apple\":\"fruit\",\"café\":\"coffee\",\"андрей\":\"name\"}"
+    },
+    {
+      "name": "canonical_payload_v2_empty_fields",
+      "input": {
+        "favorite": false,
+        "notes": null,
+        "password": null,
+        "schema_version": 2,
+        "security_questions": [],
+        "tags": [],
+        "title": "Untitled",
+        "url": null,
+        "username": null
+      },
+      "expected": "{\"favorite\":false,\"notes\":null,\"password\":null,\"schema_version\":2,\"security_questions\":[],\"tags\":[],\"title\":\"Untitled\",\"url\":null,\"username\":null}"
+    },
+    {
+      "name": "integer_numeric_preservation",
+      "input": { "revision": 42, "schema_version": 2, "count": 0 },
+      "expected": "{\"count\":0,\"revision\":42,\"schema_version\":2}"
+    }
+  ]
+}

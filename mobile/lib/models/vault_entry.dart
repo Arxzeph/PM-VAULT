@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class SecurityQuestion {
   final String question;
   final String answer;
@@ -16,6 +14,8 @@ class SecurityQuestion {
   }
 }
 
+/// In-memory UI/domain DTO for a decrypted vault entry.
+/// This model is NEVER directly serialized into database columns or network payloads.
 class VaultEntry {
   final String id;
   final String title;
@@ -28,9 +28,10 @@ class VaultEntry {
   final bool favorite;
   final String ciphertext;
   final String nonce;
-  final int version;
+  final int revision;
   final bool isDeleted;
-  final String syncStatus; // 'synced', 'pending_update', 'pending_delete'
+  final String
+      syncStatus; // 'synced', 'pending_insert', 'pending_update', 'pending_delete'
   final String clientUpdatedAt;
   final String? serverUpdatedAt;
 
@@ -46,74 +47,81 @@ class VaultEntry {
     this.favorite = false,
     required this.ciphertext,
     required this.nonce,
-    this.version = 1,
+    this.revision = 1,
     this.isDeleted = false,
     this.syncStatus = 'synced',
     required this.clientUpdatedAt,
     this.serverUpdatedAt,
   });
 
-  Map<String, dynamic> toMap() {
+  /// Deprecated backwards-compatibility alias for UI code expecting `version`.
+  @Deprecated('Use revision instead per V2.2 canonical contract')
+  int get version => revision;
+
+  /// Serializes payload for RFC 8785 Canonical JSON encryption.
+  Map<String, dynamic> toCanonicalPayload() {
     return {
-      'id': id,
-      'title': title,
-      'username': username,
-      'password': password,
-      'url': url,
+      'favorite': favorite,
       'notes': notes,
-      'security_questions': jsonEncode(securityQuestions.map((q) => q.toMap()).toList()),
-      'tags': jsonEncode(tags),
-      'favorite': favorite ? 1 : 0,
-      'ciphertext': ciphertext,
-      'nonce': nonce,
-      'version': version,
-      'is_deleted': isDeleted ? 1 : 0,
-      'sync_status': syncStatus,
-      'client_updated_at': clientUpdatedAt,
-      'server_updated_at': serverUpdatedAt,
+      'password': password,
+      'schema_version': 2,
+      'security_questions': securityQuestions
+          .map((q) => {
+                'answer': q.answer,
+                'question': q.question,
+              })
+          .toList(),
+      'tags': tags,
+      'title': title,
+      'url': url,
+      'username': username,
     };
   }
 
-  factory VaultEntry.fromMap(Map<String, dynamic> map) {
-    List<String> parsedTags = [];
-    if (map['tags'] != null) {
-      try {
-        final decoded = jsonDecode(map['tags']);
-        if (decoded is List) {
-          parsedTags = decoded.map((e) => e.toString()).toList();
+  factory VaultEntry.fromDecryptedPayload({
+    required String id,
+    required Map<String, dynamic> payload,
+    required String ciphertext,
+    required String nonce,
+    required int revision,
+    required bool isDeleted,
+    required String syncStatus,
+    required String clientUpdatedAt,
+    String? serverUpdatedAt,
+  }) {
+    List<SecurityQuestion> parsedQuestions = [];
+    if (payload['security_questions'] is List) {
+      for (final item in payload['security_questions'] as List) {
+        if (item is Map) {
+          parsedQuestions.add(
+            SecurityQuestion.fromMap(Map<String, dynamic>.from(item)),
+          );
         }
-      } catch (_) {}
+      }
     }
 
-    List<SecurityQuestion> parsedQuestions = [];
-    if (map['security_questions'] != null) {
-      try {
-        final decoded = jsonDecode(map['security_questions']);
-        if (decoded is List) {
-          parsedQuestions = decoded
-              .map((e) => SecurityQuestion.fromMap(Map<String, dynamic>.from(e)))
-              .toList();
-        }
-      } catch (_) {}
+    List<String> parsedTags = [];
+    if (payload['tags'] is List) {
+      parsedTags = (payload['tags'] as List).map((e) => e.toString()).toList();
     }
 
     return VaultEntry(
-      id: map['id'] as String,
-      title: map['title'] as String? ?? 'Untitled',
-      username: map['username'] as String?,
-      password: map['password'] as String?,
-      url: map['url'] as String?,
-      notes: map['notes'] as String?,
+      id: id,
+      title: payload['title'] as String? ?? 'Untitled',
+      username: payload['username'] as String?,
+      password: payload['password'] as String?,
+      url: payload['url'] as String?,
+      notes: payload['notes'] as String?,
       securityQuestions: parsedQuestions,
       tags: parsedTags,
-      favorite: (map['favorite'] == 1 || map['favorite'] == true),
-      ciphertext: map['ciphertext'] as String? ?? '',
-      nonce: map['nonce'] as String? ?? '',
-      version: map['version'] as int? ?? 1,
-      isDeleted: (map['is_deleted'] == 1 || map['is_deleted'] == true),
-      syncStatus: map['sync_status'] as String? ?? 'synced',
-      clientUpdatedAt: map['client_updated_at'] as String? ?? DateTime.now().toUtc().toIso8601String(),
-      serverUpdatedAt: map['server_updated_at'] as String?,
+      favorite: (payload['favorite'] == true || payload['favorite'] == 1),
+      ciphertext: ciphertext,
+      nonce: nonce,
+      revision: revision,
+      isDeleted: isDeleted,
+      syncStatus: syncStatus,
+      clientUpdatedAt: clientUpdatedAt,
+      serverUpdatedAt: serverUpdatedAt,
     );
   }
 
@@ -128,6 +136,7 @@ class VaultEntry {
     bool? favorite,
     String? ciphertext,
     String? nonce,
+    int? revision,
     int? version,
     bool? isDeleted,
     String? syncStatus,
@@ -146,7 +155,7 @@ class VaultEntry {
       favorite: favorite ?? this.favorite,
       ciphertext: ciphertext ?? this.ciphertext,
       nonce: nonce ?? this.nonce,
-      version: version ?? this.version,
+      revision: revision ?? version ?? this.revision,
       isDeleted: isDeleted ?? this.isDeleted,
       syncStatus: syncStatus ?? this.syncStatus,
       clientUpdatedAt: clientUpdatedAt ?? this.clientUpdatedAt,

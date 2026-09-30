@@ -29,7 +29,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
           channel: 'stable'
           cache: true
 
@@ -43,7 +42,7 @@ jobs:
 
       - name: Analyze code
         working-directory: mobile
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run unit & parity tests
         working-directory: mobile

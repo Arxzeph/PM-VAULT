@@ -77,7 +77,8 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                       border: Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981), size: 16),
+                    child: const Icon(Icons.auto_awesome_rounded,
+                        color: Color(0xFF10B981), size: 16),
                   ),
                   const SizedBox(width: 10),
                   const Text(
@@ -91,7 +92,8 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+                icon: const Icon(Icons.close_rounded,
+                    color: Colors.white54, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -121,12 +123,14 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.refresh_rounded, color: Colors.white60, size: 18),
+                  icon: const Icon(Icons.refresh_rounded,
+                      color: Colors.white60, size: 18),
                   onPressed: _regenerate,
                   tooltip: 'Regenerate',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.copy_rounded, color: Color(0xFF10B981), size: 18),
+                  icon: const Icon(Icons.copy_rounded,
+                      color: Color(0xFF10B981), size: 18),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _generated));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -147,24 +151,33 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Length', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const Text('Length',
+                  style: TextStyle(color: Colors.white70, fontSize: 13)),
               Row(
                 children: [
                   Text(
                     '$_length chars',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: _getStrengthColor().withOpacity(0.15),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: _getStrengthColor().withOpacity(0.3)),
+                      border: Border.all(
+                          color: _getStrengthColor().withOpacity(0.3)),
                     ),
                     child: Text(
                       _getStrengthLabel(),
-                      style: TextStyle(color: _getStrengthColor(), fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: _getStrengthColor(),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -251,14 +264,16 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF09090B),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
               onPressed: () {
                 widget.onPasswordSelected!(_generated);
                 Navigator.pop(context);
               },
-              child: const Text('Use Password', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              child: const Text('Use Password',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
             ),
         ],
       ),
@@ -275,7 +290,9 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
           color: const Color(0xFF0C0D10),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: value ? const Color(0xFF10B981).withOpacity(0.5) : const Color(0xFF27272A),
+            color: value
+                ? const Color(0xFF10B981).withOpacity(0.5)
+                : const Color(0xFF27272A),
           ),
         ),
         child: Row(
@@ -292,7 +309,9 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
               ),
             ),
             Icon(
-              value ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+              value
+                  ? Icons.check_box_rounded
+                  : Icons.check_box_outline_blank_rounded,
               color: value ? const Color(0xFF10B981) : Colors.white30,
               size: 16,
             ),

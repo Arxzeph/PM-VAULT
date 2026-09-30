@@ -10,8 +10,8 @@ use zeroize::{Zeroize, Zeroizing};
 
 // Cryptographic constants locked per BUILD_PLAN.md & Phase 6 specs
 pub const ARGON2_M_COST: u32 = 65536; // 64 MiB
-pub const ARGON2_T_COST: u32 = 3;     // 3 iterations
-pub const ARGON2_P_COST: u32 = 4;     // 4 parallelism
+pub const ARGON2_T_COST: u32 = 3; // 3 iterations
+pub const ARGON2_P_COST: u32 = 4; // 4 parallelism
 pub const SALT_LEN: usize = 16;
 pub const KEY_LEN: usize = 32;
 pub const NONCE_LEN: usize = 24;
@@ -25,7 +25,10 @@ pub const RECOVERY_WRAP_INFO: &[u8] = b"pm-vault-recovery-wrap-v2";
 pub const RECOVERY_AUTH_INFO: &[u8] = b"pm-vault-recovery-auth-v2";
 
 /// Derives the 32-byte Master Key (MK) using Argon2id.
-pub fn derive_master_key(master_password: &str, salt: &[u8]) -> Result<Zeroizing<[u8; KEY_LEN]>, String> {
+pub fn derive_master_key(
+    master_password: &str,
+    salt: &[u8],
+) -> Result<Zeroizing<[u8; KEY_LEN]>, String> {
     if salt.len() < 16 {
         return Err("Salt must be at least 16 bytes".into());
     }
@@ -96,7 +99,14 @@ pub fn canonicalize_json(value: &serde_json::Value) -> String {
                 "false".to_string()
             }
         }
-        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Number(n) => {
+            if !n.is_i64() && !n.is_u64() {
+                panic!(
+                    "Non-integer numeric values are not supported in PM-Vault Canonical Payload v2"
+                );
+            }
+            n.to_string()
+        }
         serde_json::Value::String(s) => {
             serde_json::to_string(s).unwrap_or_else(|_| format!("\"{}\"", s))
         }
@@ -113,8 +123,7 @@ pub fn canonicalize_json(value: &serde_json::Value) -> String {
             let entries: Vec<String> = sorted
                 .into_iter()
                 .map(|(k, v)| {
-                    let k_json =
-                        serde_json::to_string(k).unwrap_or_else(|_| format!("\"{}\"", k));
+                    let k_json = serde_json::to_string(k).unwrap_or_else(|_| format!("\"{}\"", k));
                     format!("{}:{}", k_json, canonicalize_json(v))
                 })
                 .collect();
@@ -200,12 +209,14 @@ pub fn parse_recovery_code(code_str: &str) -> Result<Zeroizing<[u8; KEY_LEN]>, S
             clean.len()
         ));
     }
-    let bytes =
-        hex::decode(clean).map_err(|e| format!("Invalid hex characters in recovery code: {}", e))?;
+    let bytes = hex::decode(clean)
+        .map_err(|e| format!("Invalid hex characters in recovery code: {}", e))?;
     let mut secret = [0u8; KEY_LEN];
     secret.copy_from_slice(&bytes);
     Ok(Zeroizing::new(secret))
 }
+
+pub type RecoveryKeys = (Zeroizing<[u8; KEY_LEN]>, Zeroizing<[u8; KEY_LEN]>, String);
 
 /// Splits the 32-byte RecoverySecret into:
 /// 1. REK (Recovery Encryption Key) via HKDF (info = "pm-vault-recovery-wrap-v2")
@@ -214,7 +225,7 @@ pub fn parse_recovery_code(code_str: &str) -> Result<Zeroizing<[u8; KEY_LEN]>, S
 pub fn derive_recovery_keys(
     recovery_secret: &[u8; KEY_LEN],
     user_id: &str,
-) -> Result<(Zeroizing<[u8; KEY_LEN]>, Zeroizing<[u8; KEY_LEN]>, String), String> {
+) -> Result<RecoveryKeys, String> {
     let clean_uid = user_id.trim().to_lowercase();
     let hk = Hkdf::<Sha256>::new(Some(clean_uid.as_bytes()), recovery_secret.as_slice());
 
@@ -227,7 +238,7 @@ pub fn derive_recovery_keys(
         .map_err(|e| format!("HKDF expansion for RecoveryAuthToken failed: {}", e))?;
 
     let mut hasher = Sha256::new();
-    hasher.update(&auth_token);
+    hasher.update(auth_token);
     let hash_bytes = hasher.finalize();
     let auth_hash = hex::encode(hash_bytes);
 
@@ -275,9 +286,9 @@ pub fn decrypt_dek_recovery(
         aad: aad.as_bytes(),
     };
 
-    let plaintext = cipher
-        .decrypt(xnonce, payload)
-        .map_err(|_| "Failed to decrypt recovery DEK: invalid recovery key or corrupted data".to_string())?;
+    let plaintext = cipher.decrypt(xnonce, payload).map_err(|_| {
+        "Failed to decrypt recovery DEK: invalid recovery key or corrupted data".to_string()
+    })?;
 
     if plaintext.len() != KEY_LEN {
         return Err("Decrypted recovery DEK length mismatch".into());
@@ -383,9 +394,9 @@ pub fn decrypt_entry_payload(
         aad: aad.as_bytes(),
     };
 
-    let plaintext_bytes = cipher
-        .decrypt(xnonce, payload)
-        .map_err(|_| "Failed to decrypt entry: authentication tag verification failed".to_string())?;
+    let plaintext_bytes = cipher.decrypt(xnonce, payload).map_err(|_| {
+        "Failed to decrypt entry: authentication tag verification failed".to_string()
+    })?;
 
     String::from_utf8(plaintext_bytes)
         .map_err(|e| format!("Failed to parse decrypted entry as UTF-8: {}", e))
@@ -444,6 +455,7 @@ pub fn decrypt_dek(
 }
 
 /// Legacy entry encryption with entry_id as AAD.
+#[allow(dead_code)]
 pub fn encrypt_entry(
     plaintext_json: &str,
     dek: &[u8; KEY_LEN],
@@ -453,6 +465,7 @@ pub fn encrypt_entry(
 }
 
 /// Legacy entry decryption with entry_id as AAD.
+#[allow(dead_code)]
 pub fn decrypt_entry(
     ciphertext: &[u8],
     nonce: &[u8; NONCE_LEN],
@@ -519,7 +532,8 @@ mod tests {
         let entry_id = "550e8400-e29b-41d4-a716-446655440000";
         let plaintext = r#"{"title":"GitHub","password":"SuperSecret123!"}"#;
 
-        let (ct, nonce) = encrypt_entry(plaintext, &decrypted_dek, entry_id).expect("Encrypt entry");
+        let (ct, nonce) =
+            encrypt_entry(plaintext, &decrypted_dek, entry_id).expect("Encrypt entry");
         let pt = decrypt_entry(&ct, &nonce, &decrypted_dek, entry_id).expect("Decrypt entry");
         assert_eq!(plaintext, pt);
 

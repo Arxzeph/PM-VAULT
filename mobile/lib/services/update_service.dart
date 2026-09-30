@@ -24,7 +24,8 @@ class UpdateInfo {
 
 class UpdateService {
   static const String repo = 'Arxzeph/PM-VAULT';
-  static const String githubApiUrl = 'https://api.github.com/repos/$repo/releases/latest';
+  static const String githubApiUrl =
+      'https://api.github.com/repos/$repo/releases/latest';
 
   /// Check if a newer version is available on GitHub Releases
   static Future<UpdateInfo?> checkUpdate() async {
@@ -46,8 +47,10 @@ class UpdateService {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final rawTag = (data['tag_name'] as String? ?? '').replaceFirst('v', '');
-      final releaseNotes = data['body'] as String? ?? 'No release notes provided.';
-      final htmlUrl = data['html_url'] as String? ?? 'https://github.com/$repo/releases';
+      final releaseNotes =
+          data['body'] as String? ?? 'No release notes provided.';
+      final htmlUrl =
+          data['html_url'] as String? ?? 'https://github.com/$repo/releases';
 
       // Find APK asset
       String apkUrl = '';
@@ -79,7 +82,8 @@ class UpdateService {
   static bool _isVersionGreater(String remote, String local) {
     if (remote.isEmpty) return false;
     try {
-      final rParts = remote.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+      final rParts =
+          remote.split('.').map((p) => int.tryParse(p) ?? 0).toList();
       final lParts = local.split('.').map((p) => int.tryParse(p) ?? 0).toList();
 
       while (rParts.length < 3) {
@@ -154,7 +158,8 @@ class UpdateService {
   }
 
   /// Interactive Update Dialog
-  static Future<void> showUpdateDialog(BuildContext context, {bool silentIfUpToDate = false}) async {
+  static Future<void> showUpdateDialog(BuildContext context,
+      {bool silentIfUpToDate = false}) async {
     if (!context.mounted) return;
 
     // Show loading indicator if not silent
@@ -166,10 +171,12 @@ class UpdateService {
               SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
               ),
               SizedBox(width: 14),
-              Text('Checking for updates...', style: TextStyle(color: Colors.white)),
+              Text('Checking for updates...',
+                  style: TextStyle(color: Colors.white)),
             ],
           ),
           backgroundColor: Color(0xFF1E293B),
@@ -188,9 +195,11 @@ class UpdateService {
           const SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 20),
+                Icon(Icons.check_circle_rounded,
+                    color: Color(0xFF10B981), size: 20),
                 SizedBox(width: 12),
-                Text('PM Vault is up to date (V2.0.0)', style: TextStyle(color: Colors.white)),
+                Text('PM Vault is up to date (V2.0.0)',
+                    style: TextStyle(color: Colors.white)),
               ],
             ),
             backgroundColor: Color(0xFF0F172A),
@@ -263,7 +272,8 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
               color: Colors.cyanAccent.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.system_update_rounded, color: Colors.cyanAccent, size: 24),
+            child: const Icon(Icons.system_update_rounded,
+                color: Colors.cyanAccent, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -299,7 +309,8 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
             child: SingleChildScrollView(
               child: Text(
                 widget.update.releaseNotes,
-                style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, height: 1.4),
+                style: const TextStyle(
+                    color: Color(0xFFCBD5E1), fontSize: 12, height: 1.4),
               ),
             ),
           ),
@@ -325,7 +336,8 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
               child: LinearProgressIndicator(
                 value: _progress > 0 ? _progress : null,
                 backgroundColor: const Color(0xFF1E293B),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
                 minHeight: 8,
               ),
             ),
@@ -341,14 +353,16 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
         if (!_isDownloading)
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Later', style: TextStyle(color: Color(0xFF64748B))),
+            child:
+                const Text('Later', style: TextStyle(color: Color(0xFF64748B))),
           ),
         ElevatedButton(
           onPressed: _isDownloading ? null : _startDownload,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.cyanAccent,
             foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: Text(_isDownloading ? 'Updating...' : 'Update Now'),
         ),

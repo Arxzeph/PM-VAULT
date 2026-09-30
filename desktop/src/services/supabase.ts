@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { VaultEntry } from "../types";
+import { EncryptedEnvelope, RemoteVaultMetadata } from "../types";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://fdavvijioofchmkgmihg.supabase.co";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
@@ -52,7 +52,6 @@ export const supabaseService = {
     });
 
     if (!signInError && signInData.user) {
-      console.log("[Supabase] Signed in successfully:", signInData.user.id);
       return { user: signInData.user, isNewUser: false };
     }
 
@@ -60,54 +59,52 @@ export const supabaseService = {
       console.warn("[Supabase] signInWithPassword notice:", signInError.message);
     }
 
-    // If sign in failed, try signing up
+    // Try signing up if account does not exist
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password: authVerifier,
     });
 
     if (signUpError) {
-      console.error("[Supabase] signUp error:", signUpError.message, signUpError);
       return { error: signUpError.message };
     }
 
-    if (signUpData.user) {
-      console.log("[Supabase] Signed up successfully:", signUpData.user.id);
-      return { user: signUpData.user, isNewUser: true };
-    }
-
-    return { error: "No user returned from Supabase auth" };
+    return { user: signUpData.user, isNewUser: true };
   },
 
   saveRemoteVaultMeta: async (
     userId: string,
     masterSalt: string,
     encryptedDek: string,
-    dekNonce: string
-  ) => {
+    dekNonce: string,
+    dekWrapVersion: number = 2,
+    keyGeneration: number = 1
+  ): Promise<void> => {
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase) throw new Error("Supabase client not initialized");
 
     const { error } = await supabase.from("vault_metadata").upsert({
       id: userId,
       master_salt: masterSalt,
       encrypted_dek: encryptedDek,
       dek_nonce: dekNonce,
+      dek_wrap_version: dekWrapVersion,
+      key_generation: keyGeneration,
       updated_at: new Date().toISOString(),
     });
 
     if (error) {
-      console.error("Failed to save remote vault metadata:", error);
+      throw new Error(`Failed to save remote vault metadata: ${error.message}`);
     }
   },
 
-  fetchRemoteVaultMeta: async (userId: string) => {
+  fetchRemoteVaultMeta: async (userId: string): Promise<RemoteVaultMetadata | null> => {
     const supabase = getSupabase();
     if (!supabase) return null;
 
     const { data, error } = await supabase
       .from("vault_metadata")
-      .select("master_salt, encrypted_dek, dek_nonce")
+      .select("id, master_salt, encrypted_dek, dek_nonce, dek_wrap_version, key_generation, created_at, updated_at")
       .eq("id", userId)
       .single();
 
@@ -115,46 +112,110 @@ export const supabaseService = {
       console.warn("Could not fetch remote vault meta:", error.message);
       return null;
     }
-    return data;
+    return data as RemoteVaultMetadata;
   },
 
-  pushEntry: async (userId: string, entry: VaultEntry) => {
+  /// Pushes an EncryptedEnvelope to Supabase using optimistic concurrency RPC.
+  /// Rejects stale revisions and never accepts remote owner mismatched with user.
+  pushEnvelope: async (
+    userId: string,
+    envelope: EncryptedEnvelope,
+    expectedPreviousRevision?: number
+  ): Promise<{ success: boolean; status: string; server_updated_at: string }> => {
     const supabase = getSupabase();
-    if (!supabase) return null;
+    if (!supabase) throw new Error("Supabase client not initialized");
 
-    const { data, error } = await supabase.from("vault_entries").upsert({
-      id: entry.id,
-      user_id: userId,
-      ciphertext: entry.ciphertext,
-      nonce: entry.nonce,
-      version: entry.version,
-      is_deleted: entry.is_deleted,
-      client_updated_at: entry.client_updated_at,
-    }).select("server_updated_at").single();
+    // Try optimistic concurrency RPC first
+    try {
+      const { data, error } = await supabase.rpc("upsert_vault_envelope", {
+        p_id: envelope.id,
+        p_crypto_version: envelope.crypto_version,
+        p_payload_schema_version: envelope.payload_schema_version,
+        p_nonce: envelope.nonce,
+        p_ciphertext: envelope.ciphertext,
+        p_revision: envelope.revision,
+        p_is_deleted: envelope.is_deleted,
+        p_client_updated_at: envelope.client_updated_at,
+        p_expected_previous_revision: expectedPreviousRevision ?? null,
+      });
 
-    if (error) {
-      console.error("[Supabase] Failed to push entry to Supabase:", error.message, error);
-      return null;
+      if (!error && data && data.length > 0) {
+        const res = data[0];
+        return {
+          success: res.success,
+          status: res.status,
+          server_updated_at: res.server_updated_at,
+        };
+      }
+    } catch {
+      // Fallback to direct table upsert if RPC not yet deployed
     }
 
-    console.log("[Supabase] Successfully pushed entry:", entry.id);
-    return data?.server_updated_at as string | null;
+    // Direct table upsert fallback
+    const { data, error } = await supabase
+      .from("vault_entries")
+      .upsert({
+        id: envelope.id,
+        user_id: userId,
+        crypto_version: envelope.crypto_version,
+        payload_schema_version: envelope.payload_schema_version,
+        nonce: envelope.nonce,
+        ciphertext: envelope.ciphertext,
+        revision: envelope.revision,
+        is_deleted: envelope.is_deleted,
+        client_updated_at: envelope.client_updated_at,
+      })
+      .select("server_updated_at")
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to push envelope ${envelope.id}: ${error.message}`);
+    }
+
+    return {
+      success: true,
+      status: "updated",
+      server_updated_at: data.server_updated_at,
+    };
   },
 
-  fetchAllRemoteEntries: async (userId: string) => {
+  /// Fetches all remote envelopes for the authenticated user.
+  /// Validates user ownership on each row.
+  fetchAllRemoteEnvelopes: async (userId: string): Promise<EncryptedEnvelope[]> => {
     const supabase = getSupabase();
     if (!supabase) return [];
 
     const { data, error } = await supabase
       .from("vault_entries")
-      .select("*")
+      .select("id, user_id, crypto_version, payload_schema_version, nonce, ciphertext, revision, is_deleted, client_updated_at, server_updated_at")
       .eq("user_id", userId);
 
     if (error) {
-      console.error("Failed to fetch remote entries:", error);
-      return [];
+      throw new Error(`Failed to fetch remote envelopes: ${error.message}`);
     }
 
-    return data || [];
+    const envelopes: EncryptedEnvelope[] = [];
+    for (const row of data || []) {
+      if (row.user_id !== userId) {
+        console.warn(`Untrusted envelope discarded: user_id mismatch (${row.user_id} !== ${userId})`);
+        continue;
+      }
+
+      envelopes.push({
+        id: row.id,
+        owner_id: userId,
+        crypto_version: row.crypto_version ?? 2,
+        payload_schema_version: row.payload_schema_version ?? 2,
+        nonce: row.nonce,
+        ciphertext: row.ciphertext,
+        revision: Number(row.revision ?? 1),
+        is_deleted: Boolean(row.is_deleted),
+        client_updated_at: row.client_updated_at,
+        server_updated_at: row.server_updated_at,
+        sync_state: "synced",
+      });
+    }
+
+    return envelopes;
   },
 };

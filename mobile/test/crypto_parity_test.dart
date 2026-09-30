@@ -6,14 +6,17 @@ void main() {
   test('Verify HKDF Auth Verifier is 64-char hex string', () async {
     final masterKey = Uint8List.fromList(List.generate(32, (i) => i));
     const email = 'onlyvalorant3092@gmail.com';
-    final authVerifier = await CryptoService.deriveAuthVerifier(masterKey, email);
+    final authVerifier =
+        await CryptoService.deriveAuthVerifier(masterKey, email);
 
     expect(authVerifier.length, 64);
     expect(RegExp(r'^[0-9a-f]{64}$').hasMatch(authVerifier), true);
   });
 
-  test('Verify DEK encryption and decryption with pm:dek:v1 AAD (legacy)', () async {
-    final masterKey = Uint8List.fromList(List.generate(32, (i) => (i + 3) % 256));
+  test('Verify DEK encryption and decryption with pm:dek:v1 AAD (legacy)',
+      () async {
+    final masterKey =
+        Uint8List.fromList(List.generate(32, (i) => (i + 3) % 256));
     final dek = CryptoService.generateDek();
 
     final enc = await CryptoService.encryptDek(dek, masterKey);
@@ -51,7 +54,8 @@ void main() {
     expect(canonical, expected);
   });
 
-  test('Verify V2 Domain-Separated AAD builders and encryption roundtrip', () async {
+  test('Verify V2 Domain-Separated AAD builders and encryption roundtrip',
+      () async {
     const ownerId = '7f1d2a3c-4b5e-6f7a-8b9c-0d1e2f3a4b5c';
     const entryId = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
     const revision = 12;

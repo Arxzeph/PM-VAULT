@@ -1,152 +1,249 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/vault_entry.dart';
+import '../models/encrypted_envelope.dart';
 import '../db/vault_database.dart';
-import '../crypto/crypto_service.dart';
 import 'supabase_service.dart';
 
-enum SyncStatus { synced, syncing, offline, error }
+enum SyncStatus { synced, syncing, offline, degraded, error }
+
+class SyncSession {
+  final int sessionGeneration;
+  final String userId;
+  final Uint8List dek;
+  bool isCancelled = false;
+  RealtimeChannel? channel;
+  void Function(SyncStatus status)? statusCallback;
+  void Function()? updatedCallback;
+
+  SyncSession({
+    required this.sessionGeneration,
+    required this.userId,
+    required this.dek,
+    this.statusCallback,
+    this.updatedCallback,
+  });
+
+  void cancel() {
+    isCancelled = true;
+    if (channel != null) {
+      try {
+        SupabaseService.client.removeChannel(channel!);
+      } catch (_) {}
+      channel = null;
+    }
+    statusCallback = null;
+    updatedCallback = null;
+    dek.fillRange(0, dek.length, 0);
+  }
+}
 
 class SyncEngine {
-  static RealtimeChannel? _channel;
+  static SyncSession? _currentSession;
+  static int _nextGeneration = 1;
   static bool _isSyncing = false;
-  static String? _currentUserId;
-  static Uint8List? _activeDek;
-  static void Function(SyncStatus status)? onStatusChanged;
-  static void Function()? onEntriesUpdated;
 
-  static void start({
+  static void Function(SyncStatus status)? get onStatusChanged =>
+      _currentSession?.statusCallback;
+
+  static void Function()? get onEntriesUpdated =>
+      _currentSession?.updatedCallback;
+
+  /// Starts a new isolated sync session, stopping any previous session first.
+  static Future<void> start({
     required String userId,
     required Uint8List dek,
     void Function(SyncStatus status)? statusCallback,
     void Function()? updatedCallback,
-  }) {
-    _currentUserId = userId;
-    _activeDek = dek;
-    onStatusChanged = statusCallback;
-    onEntriesUpdated = updatedCallback;
+  }) async {
+    await stop();
+
+    final sessionGen = _nextGeneration++;
+    final session = SyncSession(
+      sessionGeneration: sessionGen,
+      userId: userId.trim().toLowerCase(),
+      dek: Uint8List.fromList(dek),
+      statusCallback: statusCallback,
+      updatedCallback: updatedCallback,
+    );
+    _currentSession = session;
+
+    session.statusCallback?.call(SyncStatus.syncing);
 
     // 1. Initial full sweep
-    syncFullSweep();
+    await syncFullSweep();
 
     // 2. Realtime WebSocket subscription
-    _setupRealtimeSubscription(userId);
+    _setupRealtimeSubscription(session);
   }
 
-  static void stop() {
-    if (_channel != null) {
-      SupabaseService.client.removeChannel(_channel!);
-      _channel = null;
+  /// Stops and wipes the active sync session cleanly.
+  static Future<void> stop() async {
+    final oldSession = _currentSession;
+    _currentSession = null;
+    if (oldSession != null) {
+      oldSession.statusCallback?.call(SyncStatus.offline);
+      oldSession.cancel();
     }
-    _currentUserId = null;
-    _activeDek = null;
-    onStatusChanged?.call(SyncStatus.offline);
   }
 
+  /// Applies a remote envelope using canonical revision comparison and conflict detection.
+  /// Shared between full sweep and Realtime listener.
+  static Future<bool> applyRemoteEnvelope(
+    EncryptedEnvelope remote,
+    SyncSession session,
+  ) async {
+    if (session.isCancelled) return false;
+
+    // Validate ownership
+    if (remote.ownerId != session.userId) {
+      return false;
+    }
+
+    final local = await VaultDatabase.getEncryptedEnvelope(remote.id);
+    if (local != null) {
+      // If local has pending un-synced edits
+      if (local.syncState != SyncState.synced) {
+        if (remote.revision == local.revision) {
+          // Concurrent conflict: store remote in conflict_envelopes
+          await VaultDatabase.recordConflictEnvelope(
+            originalId: remote.id,
+            ownerId: remote.ownerId,
+            cryptoVersion: remote.cryptoVersion,
+            payloadSchemaVersion: remote.payloadSchemaVersion,
+            nonce: remote.nonce,
+            ciphertext: remote.ciphertext,
+            revision: remote.revision,
+            isDeleted: remote.isDeleted,
+            clientUpdatedAt: remote.clientUpdatedAt,
+            serverUpdatedAt: remote.serverUpdatedAt,
+          );
+          return false;
+        }
+
+        // If remote revision is lower than our pending revision, keep local
+        if (remote.revision < local.revision) {
+          return false;
+        }
+      }
+
+      // If local is synced, compare revisions
+      if (remote.revision < local.revision) {
+        return false;
+      }
+
+      // Revision tie-break with client timestamp for legacy envelopes
+      if (remote.revision == local.revision) {
+        if (local.clientUpdatedAt.compareTo(remote.clientUpdatedAt) >= 0) {
+          return false;
+        }
+      }
+    }
+
+    // Persist ciphertext directly without decrypting in network/transport layer
+    await VaultDatabase.upsertEncryptedEnvelope(
+      remote.copyWith(syncState: SyncState.synced),
+    );
+    return true;
+  }
+
+  /// Full bidirectional synchronization sweep
   static Future<void> syncFullSweep() async {
-    if (_isSyncing || _currentUserId == null || _activeDek == null) return;
+    final session = _currentSession;
+    if (session == null || session.isCancelled || _isSyncing) return;
 
     _isSyncing = true;
-    onStatusChanged?.call(SyncStatus.syncing);
+    session.statusCallback?.call(SyncStatus.syncing);
+
+    bool hasErrors = false;
+    bool hasChanges = false;
 
     try {
-      // 1. Push all pending local entries modified offline
-      final pendingList = await VaultDatabase.getPendingSync();
-      for (final item in pendingList) {
-        final serverTime = await SupabaseService.pushEntry(_currentUserId!, item);
-        if (serverTime != null) {
-          await VaultDatabase.markEntrySynced(item.id, serverTime);
-        }
-      }
+      // 1. Drain pending local envelopes (push with optimistic concurrency)
+      final pendingList = await VaultDatabase.getPendingSyncEnvelopes();
+      for (final env in pendingList) {
+        if (session.isCancelled) break;
 
-      // 2. Fetch all remote entries from Supabase
-      final remoteRows = await SupabaseService.fetchAllRemoteEntries(_currentUserId!);
-      bool hasChanges = false;
-
-      for (final row in remoteRows) {
-        final id = row['id'] as String;
-        final remoteClientTime = row['client_updated_at'] as String;
-        final existingLocal = await VaultDatabase.getEntry(id);
-
-        // LWW (Last-Write-Wins): If local is newer, do not overwrite
-        if (existingLocal != null &&
-            existingLocal.clientUpdatedAt.compareTo(remoteClientTime) >= 0) {
-          continue;
-        }
-
-        // Decrypt incoming remote ciphertext
         try {
-          final decryptedJson = await CryptoService.decryptEntry(
-            row['ciphertext'] as String,
-            row['nonce'] as String,
-            _activeDek!,
-            id,
+          final expectedPrevRev = env.revision > 1 ? env.revision - 1 : null;
+          final pushRes = await SupabaseService.pushEnvelope(
+            userId: session.userId,
+            envelope: env,
+            expectedPreviousRevision: expectedPrevRev,
           );
 
-          final payload = jsonDecode(decryptedJson) as Map<String, dynamic>;
-          final List<String> tags = [];
-          if (payload['tags'] != null && payload['tags'] is List) {
-            tags.addAll((payload['tags'] as List).map((e) => e.toString()));
+          if (pushRes['success'] == true) {
+            final serverTime = pushRes['server_updated_at'] as String? ??
+                DateTime.now().toUtc().toIso8601String();
+            await VaultDatabase.markEnvelopeSynced(
+              id: env.id,
+              revision: env.revision,
+              serverUpdatedAt: serverTime,
+            );
+            hasChanges = true;
+          } else if (pushRes['status'] == 'stale_revision') {
+            // Server has newer revision: record conflict
+            hasErrors = true;
+            await VaultDatabase.recordConflictEnvelope(
+              originalId: env.id,
+              ownerId: env.ownerId,
+              cryptoVersion: env.cryptoVersion,
+              payloadSchemaVersion: env.payloadSchemaVersion,
+              nonce: env.nonce,
+              ciphertext: env.ciphertext,
+              revision: env.revision,
+              isDeleted: env.isDeleted,
+              clientUpdatedAt: env.clientUpdatedAt,
+              serverUpdatedAt: null,
+            );
+          } else {
+            hasErrors = true;
           }
-
-          final List<SecurityQuestion> securityQuestions = [];
-          if (payload['security_questions'] != null && payload['security_questions'] is List) {
-            for (final item in payload['security_questions']) {
-              if (item is Map) {
-                securityQuestions.add(
-                  SecurityQuestion.fromMap(Map<String, dynamic>.from(item)),
-                );
-              }
-            }
-          }
-
-          final updatedEntry = VaultEntry(
-            id: id,
-            title: payload['title'] as String? ?? 'Untitled',
-            username: payload['username'] as String?,
-            password: payload['password'] as String?,
-            url: payload['url'] as String?,
-            notes: payload['notes'] as String?,
-            securityQuestions: securityQuestions,
-            tags: tags,
-            favorite: payload['favorite'] == true,
-            ciphertext: row['ciphertext'] as String,
-            nonce: row['nonce'] as String,
-            version: row['version'] as int? ?? 1,
-            isDeleted: row['is_deleted'] == true,
-            syncStatus: 'synced',
-            clientUpdatedAt: remoteClientTime,
-            serverUpdatedAt: row['server_updated_at'] as String?,
-          );
-
-          await VaultDatabase.upsertEntry(updatedEntry);
-          hasChanges = true;
-        } catch (decryptErr) {
-          print('[SyncEngine] Failed to decrypt entry $id: $decryptErr');
+        } catch (_) {
+          hasErrors = true;
         }
       }
 
-      if (hasChanges || pendingList.isNotEmpty) {
-        onEntriesUpdated?.call();
+      // 2. Fetch all remote envelopes
+      if (!session.isCancelled) {
+        final remoteEnvelopes =
+            await SupabaseService.fetchAllRemoteEnvelopes(session.userId);
+
+        for (final remote in remoteEnvelopes) {
+          if (session.isCancelled) break;
+          final applied = await applyRemoteEnvelope(remote, session);
+          if (applied) {
+            hasChanges = true;
+          }
+        }
       }
 
-      onStatusChanged?.call(SyncStatus.synced);
-    } catch (e) {
-      print('[SyncEngine] Full sweep error: $e');
-      onStatusChanged?.call(SyncStatus.error);
+      if (hasChanges && !session.isCancelled) {
+        session.updatedCallback?.call();
+      }
+
+      if (!session.isCancelled) {
+        if (hasErrors) {
+          session.statusCallback?.call(SyncStatus.degraded);
+        } else {
+          session.statusCallback?.call(SyncStatus.synced);
+        }
+      }
+    } catch (_) {
+      if (!session.isCancelled) {
+        session.statusCallback?.call(SyncStatus.error);
+      }
     } finally {
       _isSyncing = false;
     }
   }
 
-  static void _setupRealtimeSubscription(String userId) {
-    if (_channel != null) {
-      SupabaseService.client.removeChannel(_channel!);
+  static void _setupRealtimeSubscription(SyncSession session) {
+    if (session.channel != null) {
+      SupabaseService.client.removeChannel(session.channel!);
     }
 
-    _channel = SupabaseService.client
-        .channel('public:vault_entries:$userId')
+    session.channel = SupabaseService.client
+        .channel('public:vault_entries:${session.userId}')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -154,68 +251,36 @@ class SyncEngine {
           filter: PostgresChangeFilter(
             type: PostgresChangeFilterType.eq,
             column: 'user_id',
-            value: userId,
+            value: session.userId,
           ),
           callback: (payload) async {
+            if (session.isCancelled) return;
             final row = payload.newRecord;
-            if (row.isEmpty || _activeDek == null) return;
-
-            final id = row['id'] as String;
-            final remoteClientTime = row['client_updated_at'] as String?;
-            if (remoteClientTime == null) return;
-
-            final existing = await VaultDatabase.getEntry(id);
-            if (existing != null &&
-                existing.clientUpdatedAt.compareTo(remoteClientTime) >= 0) {
-              return;
-            }
+            if (row.isEmpty) return;
 
             try {
-              final decryptedJson = await CryptoService.decryptEntry(
-                row['ciphertext'] as String,
-                row['nonce'] as String,
-                _activeDek!,
-                id,
+              final envelope = EncryptedEnvelope.fromRemoteMap(
+                Map<String, dynamic>.from(row),
+                authenticatedUserId: session.userId,
               );
 
-              final p = jsonDecode(decryptedJson) as Map<String, dynamic>;
-              final List<String> tags = [];
-              if (p['tags'] != null && p['tags'] is List) {
-                tags.addAll((p['tags'] as List).map((e) => e.toString()));
+              final applied = await applyRemoteEnvelope(envelope, session);
+              if (applied && !session.isCancelled) {
+                session.updatedCallback?.call();
+                session.statusCallback?.call(SyncStatus.synced);
               }
-
-              final entry = VaultEntry(
-                id: id,
-                title: p['title'] as String? ?? 'Untitled',
-                username: p['username'] as String?,
-                password: p['password'] as String?,
-                url: p['url'] as String?,
-                notes: p['notes'] as String?,
-                tags: tags,
-                favorite: p['favorite'] == true,
-                ciphertext: row['ciphertext'] as String,
-                nonce: row['nonce'] as String,
-                version: row['version'] as int? ?? 1,
-                isDeleted: row['is_deleted'] == true,
-                syncStatus: 'synced',
-                clientUpdatedAt: remoteClientTime,
-                serverUpdatedAt: row['server_updated_at'] as String?,
-              );
-
-              await VaultDatabase.upsertEntry(entry);
-              onEntriesUpdated?.call();
-              onStatusChanged?.call(SyncStatus.synced);
-            } catch (err) {
-              print('[SyncEngine] Realtime decrypt error: $err');
+            } catch (_) {
+              // Quarantine untrusted or malformed remote envelope
             }
           },
         )
         .subscribe((status, [error]) {
-          if (status == RealtimeSubscribeStatus.subscribed) {
-            onStatusChanged?.call(SyncStatus.synced);
-          } else if (status == RealtimeSubscribeStatus.closed) {
-            onStatusChanged?.call(SyncStatus.offline);
-          }
-        });
+      if (session.isCancelled) return;
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        session.statusCallback?.call(SyncStatus.synced);
+      } else if (status == RealtimeSubscribeStatus.closed) {
+        session.statusCallback?.call(SyncStatus.offline);
+      }
+    });
   }
 }

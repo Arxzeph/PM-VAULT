@@ -11,11 +11,6 @@ interface RecoveryRequest {
   recovery_auth_token: string; // 32-byte token in hex
 }
 
-// In-memory rate limiting map: IP/email -> attempts timestamp[]
-const attemptsMap = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const MAX_ATTEMPTS = 5;
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -33,22 +28,25 @@ serve(async (req) => {
       );
     }
 
-    // Rate Limiting Check
-    const rateLimitKey = `${clientIp}:${email.trim().toLowerCase()}`;
-    const now = Date.now();
-    const history = (attemptsMap.get(rateLimitKey) || []).filter(
-      (ts) => now - ts < RATE_LIMIT_WINDOW_MS
-    );
+    // Initialize Supabase Admin Client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (history.length >= MAX_ATTEMPTS) {
+    // Durable Rate Limiting Check
+    const rateLimitKey = `${clientIp}:${email.trim().toLowerCase()}`;
+    const { data: isAllowed, error: rateError } = await supabase.rpc("check_and_increment_recovery_rate_limit", {
+      p_key: rateLimitKey,
+      p_max_attempts: 5,
+      p_window_seconds: 3600,
+    });
+
+    if (rateError || isAllowed === false) {
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded. Maximum 5 recovery attempts per hour." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    history.push(now);
-    attemptsMap.set(rateLimitKey, history);
 
     // Compute SHA-256 of the recovery_auth_token in hex
     const cleanToken = recovery_auth_token.replace(/[^0-9a-fA-F]/g, "").toLowerCase();
@@ -67,11 +65,6 @@ serve(async (req) => {
     const hashHex = Array.from(new Uint8Array(hashBuffer))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-
-    // Initialize Supabase Admin Client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Call stored procedure to verify hash securely
     const { data, error } = await supabase.rpc("verify_recovery_auth", {

@@ -1,10 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   VaultEntry,
+  VaultLoadResult,
   VaultStatus,
   SaveEntryInput,
   InitVaultResponse,
   UnlockVaultResponse,
+  EncryptedEnvelope,
 } from "../types";
 
 export const api = {
@@ -32,8 +34,8 @@ export const api = {
     return await invoke<boolean>("lock_vault");
   },
 
-  listEntries: async (): Promise<VaultEntry[]> => {
-    return await invoke<VaultEntry[]>("list_entries");
+  listEntries: async (): Promise<VaultLoadResult> => {
+    return await invoke<VaultLoadResult>("list_entries");
   },
 
   saveEntry: async (input: SaveEntryInput): Promise<VaultEntry> => {
@@ -54,18 +56,26 @@ export const api = {
     return await invoke<string>("generate_password", options || {});
   },
 
-  getPendingSync: async (): Promise<VaultEntry[]> => {
-    return await invoke<VaultEntry[]>("get_pending_sync");
+  getPendingSync: async (): Promise<EncryptedEnvelope[]> => {
+    return await invoke<EncryptedEnvelope[]>("get_pending_sync");
   },
 
   markEntrySynced: async (
     id: string,
+    revision: number,
     serverUpdatedAt: string
   ): Promise<boolean> => {
     return await invoke<boolean>("mark_entry_synced", {
       id,
+      revision,
       serverUpdatedAt,
     });
+  },
+
+  applyRemoteEnvelope: async (
+    envelope: EncryptedEnvelope
+  ): Promise<VaultEntry | null> => {
+    return await invoke<VaultEntry | null>("apply_remote_envelope", { envelope });
   },
 
   applyRemoteEntry: async (remote: {
@@ -127,7 +137,9 @@ export const api = {
     masterPassword: string,
     masterSalt: string,
     encryptedDek: string,
-    dekNonce: string
+    dekNonce: string,
+    dekWrapVersion?: number,
+    keyGeneration?: number
   ): Promise<UnlockVaultResponse> => {
     return await invoke<UnlockVaultResponse>("import_remote_vault_meta", {
       email,
@@ -135,6 +147,8 @@ export const api = {
       masterSalt,
       encryptedDek,
       dekNonce,
+      dekWrapVersion,
+      keyGeneration,
     });
   },
 
@@ -159,6 +173,22 @@ export const api = {
     return await invoke<UnlockVaultResponse>("recover_vault_with_questions", {
       answers,
       newMasterPassword,
+    });
+  },
+
+  recoverVaultWithCode: async (
+    recoveryCode: string,
+    newMasterPassword: string
+  ): Promise<UnlockVaultResponse> => {
+    return await invoke<UnlockVaultResponse>("recover_vault_with_code", {
+      recoveryCode,
+      newMasterPassword,
+    });
+  },
+
+  migrateOwnerId: async (newOwnerId: string): Promise<boolean> => {
+    return await invoke<boolean>("migrate_owner_id", {
+      newOwnerId,
     });
   },
 };

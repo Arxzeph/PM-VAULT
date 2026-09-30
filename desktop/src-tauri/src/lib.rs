@@ -47,13 +47,16 @@ pub fn run() {
             get_pending_sync,
             mark_entry_synced,
             apply_remote_entry,
+            apply_remote_envelope,
             reset_vault,
             change_master_password,
             get_session_credentials,
             derive_auth_verifier_from_salt,
             setup_recovery_questions,
             get_recovery_questions,
-            recover_vault_with_questions
+            recover_vault_with_questions,
+            recover_vault_with_code,
+            migrate_owner_id
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -33,7 +33,10 @@ class ServiceIcon extends StatelessWidget {
     if (t.contains('steam')) return 'steampowered.com';
     if (t.contains('spotify')) return 'spotify.com';
     if (t.contains('apple') || t.contains('icloud')) return 'apple.com';
-    if (t.contains('microsoft') || t.contains('outlook') || t.contains('live.com') || t.contains('hotmail')) {
+    if (t.contains('microsoft') ||
+        t.contains('outlook') ||
+        t.contains('live.com') ||
+        t.contains('hotmail')) {
       return 'microsoft.com';
     }
     if (t.contains('twitter') || t.contains(' x ') || t == 'x') return 'x.com';

@@ -51,14 +51,34 @@ pub struct EncryptedEntryRow {
 }
 
 /// Structure for table `conflict_envelopes`.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConflictEnvelopeRow {
     pub original_id: String,
     pub owner_id: String,
+    pub crypto_version: u32,
+    pub payload_schema_version: u32,
     pub nonce: String,
     pub ciphertext: String,
     pub revision: u64,
+    pub is_deleted: bool,
+    pub client_updated_at: Option<String>,
+    pub server_updated_at: Option<String>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VaultLoadFailure {
+    pub id: String,
+    pub reason_code: String,
+    pub crypto_version: u32,
+    pub revision: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VaultLoadResult {
+    pub entries: Vec<VaultEntryDto>,
+    pub failures: Vec<VaultLoadFailure>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,6 +95,10 @@ pub struct EntryPayload {
 }
 
 pub fn init_tables(conn: &Connection) -> Result<(), String> {
+    let version: i32 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap_or(0);
+
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS local_meta (
@@ -103,15 +127,25 @@ pub fn init_tables(conn: &Connection) -> Result<(), String> {
         CREATE TABLE IF NOT EXISTS conflict_envelopes (
             original_id TEXT NOT NULL,
             owner_id TEXT NOT NULL,
+            crypto_version INTEGER NOT NULL DEFAULT 2,
+            payload_schema_version INTEGER NOT NULL DEFAULT 2,
             nonce TEXT NOT NULL,
             ciphertext TEXT NOT NULL,
             revision INTEGER NOT NULL,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
+            client_updated_at TEXT,
+            server_updated_at TEXT,
             created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_conflict_original ON conflict_envelopes(original_id);
         ",
     )
     .map_err(|e| format!("Database initialization failed: {}", e))?;
+
+    if version < 3 {
+        conn.execute("PRAGMA user_version = 3", [])
+            .map_err(|e| format!("Failed to set user_version: {}", e))?;
+    }
 
     Ok(())
 }
@@ -121,9 +155,7 @@ pub fn get_meta(conn: &Connection, key: &str) -> Result<Option<String>, String> 
         .prepare("SELECT value FROM local_meta WHERE key = ?1")
         .map_err(|e| e.to_string())?;
 
-    let mut rows = stmt
-        .query(params![key])
-        .map_err(|e| e.to_string())?;
+    let mut rows = stmt.query(params![key]).map_err(|e| e.to_string())?;
 
     if let Some(row) = rows.next().map_err(|e| e.to_string())? {
         let val: String = row.get(0).map_err(|e| e.to_string())?;
@@ -292,18 +324,75 @@ pub fn upsert_encrypted_row(conn: &Connection, row: &EncryptedEntryRow) -> Resul
     Ok(())
 }
 
-pub fn soft_delete_encrypted_row(
+pub fn parse_nonce(nonce_b64: &str) -> Result<[u8; 24], String> {
+    let bytes = BASE64
+        .decode(nonce_b64)
+        .map_err(|e| format!("Invalid nonce base64: {}", e))?;
+    if bytes.len() != 24 {
+        return Err(format!("Nonce must be 24 bytes (got {})", bytes.len()));
+    }
+    let mut arr = [0u8; 24];
+    arr.copy_from_slice(&bytes);
+    Ok(arr)
+}
+
+pub fn crypto_soft_delete_entry(
     conn: &Connection,
     id: &str,
-    timestamp: &str,
+    dek: &[u8; 32],
+    owner_id: &str,
 ) -> Result<(), String> {
+    let existing = get_encrypted_row_by_id(conn, id)?
+        .ok_or_else(|| format!("Entry {} not found for deletion", id))?;
+
+    // 1. Verify/decrypt using old metadata
+    let old_aad = build_entry_aad(
+        existing.crypto_version,
+        existing.payload_schema_version,
+        &existing.owner_id,
+        &existing.id,
+        existing.revision,
+        existing.is_deleted,
+    );
+    let old_ct = BASE64
+        .decode(&existing.ciphertext)
+        .map_err(|e| e.to_string())?;
+    let old_nonce = parse_nonce(&existing.nonce)?;
+    let _ = decrypt_entry_payload(&old_ct, &old_nonce, dek, &old_aad)?;
+
+    // 2. Increment revision & minimal tombstone payload
+    let new_revision = existing.revision + 1;
+    let tombstone_json = "{\"deleted\":true,\"schema_version\":2}";
+
+    // 3. Re-encrypt with deleted=1 in AAD
+    let new_aad = build_entry_aad(2, 2, owner_id, id, new_revision, true);
+    let (ct_bytes, nonce_bytes) = encrypt_entry_payload(tombstone_json, dek, &new_aad)?;
+
+    // 4. Immediate canary decrypt verification
+    let verified = decrypt_entry_payload(&ct_bytes, &nonce_bytes, dek, &new_aad)?;
+    if verified != tombstone_json {
+        return Err("Canary decrypt failed for tombstone".into());
+    }
+
+    // 5. Persist with pending_delete
+    let now = chrono::Utc::now().to_rfc3339();
+    let enc_b64 = BASE64.encode(&ct_bytes);
+    let nonce_b64 = BASE64.encode(nonce_bytes);
+
     conn.execute(
         "UPDATE encrypted_entries
-         SET is_deleted = 1, sync_state = 'pending_delete', client_updated_at = ?2
+         SET crypto_version = 2,
+             payload_schema_version = 2,
+             nonce = ?2,
+             ciphertext = ?3,
+             revision = ?4,
+             is_deleted = 1,
+             sync_state = 'pending_delete',
+             client_updated_at = ?5
          WHERE id = ?1",
-        params![id, timestamp],
+        params![id, nonce_b64, enc_b64, new_revision, now],
     )
-    .map_err(|e| format!("Failed to delete entry {}: {}", id, e))?;
+    .map_err(|e| format!("Failed to tombstone entry {}: {}", id, e))?;
 
     Ok(())
 }
@@ -345,31 +434,230 @@ pub fn get_pending_sync_envelopes(conn: &Connection) -> Result<Vec<EncryptedEntr
     Ok(result)
 }
 
-pub fn mark_envelopes_synced(
+pub fn mark_envelope_synced(
     conn: &Connection,
-    ids: &[String],
+    id: &str,
+    revision: u64,
     server_timestamp: &str,
 ) -> Result<(), String> {
-    for id in ids {
-        conn.execute(
-            "UPDATE encrypted_entries
-             SET sync_state = 'synced', server_updated_at = ?2
-             WHERE id = ?1",
-            params![id, server_timestamp],
-        )
-        .map_err(|e| format!("Failed to mark entry synced {}: {}", id, e))?;
-    }
+    conn.execute(
+        "UPDATE encrypted_entries
+         SET sync_state = 'synced', server_updated_at = ?2
+         WHERE id = ?1 AND revision = ?3",
+        params![id, server_timestamp, revision],
+    )
+    .map_err(|e| format!("Failed to mark entry synced {}: {}", id, e))?;
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn record_conflict_envelope(
+    conn: &Connection,
+    original_id: &str,
+    owner_id: &str,
+    crypto_version: u32,
+    payload_schema_version: u32,
+    nonce: &str,
+    ciphertext: &str,
+    revision: u64,
+    is_deleted: bool,
+    client_updated_at: Option<&str>,
+    server_updated_at: Option<&str>,
+) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO conflict_envelopes (
+            original_id, owner_id, crypto_version, payload_schema_version,
+            nonce, ciphertext, revision, is_deleted,
+            client_updated_at, server_updated_at, created_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![
+            original_id,
+            owner_id,
+            crypto_version,
+            payload_schema_version,
+            nonce,
+            ciphertext,
+            revision,
+            if is_deleted { 1 } else { 0 },
+            client_updated_at,
+            server_updated_at,
+            now,
+        ],
+    )
+    .map_err(|e| format!("Failed to record conflict envelope {}: {}", original_id, e))?;
+    Ok(())
+}
+
+pub fn migrate_owner_id(
+    conn: &mut Connection,
+    old_owner_id: &str,
+    new_owner_id: &str,
+    dek: &[u8; 32],
+    master_key: &[u8; 32],
+    key_generation: u32,
+) -> Result<(), String> {
+    if old_owner_id == new_owner_id {
+        return Ok(());
+    }
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    {
+        let mut stmt = tx
+            .prepare(
+                "SELECT id, crypto_version, payload_schema_version, nonce, ciphertext, revision, is_deleted
+                 FROM encrypted_entries",
+            )
+            .map_err(|e| e.to_string())?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                let del_int: i32 = row.get(6)?;
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, u32>(1)?,
+                    row.get::<_, u32>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, u64>(5)?,
+                    del_int != 0,
+                ))
+            })
+            .map_err(|e| e.to_string())?;
+
+        let mut entries_to_update = Vec::new();
+        for r in rows {
+            entries_to_update.push(r.map_err(|e| e.to_string())?);
+        }
+
+        for (id, crypto_ver, schema_ver, old_nonce, old_ct, old_rev, is_deleted) in
+            entries_to_update
+        {
+            let old_aad = build_entry_aad(
+                crypto_ver,
+                schema_ver,
+                old_owner_id,
+                &id,
+                old_rev,
+                is_deleted,
+            );
+
+            let old_ct_bytes = BASE64.decode(&old_ct).map_err(|e| e.to_string())?;
+            let old_nonce_arr = parse_nonce(&old_nonce)?;
+
+            let plaintext = decrypt_entry_payload(&old_ct_bytes, &old_nonce_arr, dek, &old_aad)?;
+
+            let new_rev = old_rev + 1;
+            let new_aad = build_entry_aad(2, 2, new_owner_id, &id, new_rev, is_deleted);
+
+            let (new_ct_bytes, new_nonce_arr) = encrypt_entry_payload(&plaintext, dek, &new_aad)?;
+            let canary = decrypt_entry_payload(&new_ct_bytes, &new_nonce_arr, dek, &new_aad)?;
+            if canary != plaintext {
+                return Err(format!(
+                    "Canary verification failed for owner migration on entry {}",
+                    id
+                ));
+            }
+
+            let now = chrono::Utc::now().to_rfc3339();
+            tx.execute(
+                "UPDATE encrypted_entries
+                 SET owner_id = ?2,
+                     crypto_version = 2,
+                     payload_schema_version = 2,
+                     nonce = ?3,
+                     ciphertext = ?4,
+                     revision = ?5,
+                     sync_state = 'pending_update',
+                     client_updated_at = ?6
+                 WHERE id = ?1",
+                params![
+                    id,
+                    new_owner_id,
+                    BASE64.encode(new_nonce_arr),
+                    BASE64.encode(&new_ct_bytes),
+                    new_rev,
+                    now,
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        // Rewrap DEK with new owner AAD
+        let (enc_dek, dek_nonce) =
+            crate::crypto::encrypt_dek_master(dek, master_key, new_owner_id, key_generation)?;
+
+        tx.execute(
+            "INSERT INTO local_meta (key, value) VALUES ('owner_id', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![new_owner_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        tx.execute(
+            "INSERT INTO local_meta (key, value) VALUES ('encrypted_dek', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![BASE64.encode(&enc_dek)],
+        )
+        .map_err(|e| e.to_string())?;
+
+        tx.execute(
+            "INSERT INTO local_meta (key, value) VALUES ('dek_nonce', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![BASE64.encode(dek_nonce)],
+        )
+        .map_err(|e| e.to_string())?;
+
+        tx.execute(
+            "INSERT INTO local_meta (key, value) VALUES ('dek_wrap_version', '2')
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn list_active_entries(
+    conn: &Connection,
+    dek: &[u8; 32],
+    _owner_id: &str,
+) -> Result<VaultLoadResult, String> {
+    let rows = list_encrypted_rows(conn)?;
+    let mut entries = Vec::new();
+    let mut failures = Vec::new();
+
+    for row in rows {
+        match decrypt_entry_row(&row, dek) {
+            Ok(dto) => entries.push(dto),
+            Err(_) => failures.push(VaultLoadFailure {
+                id: row.id,
+                reason_code: "DECRYPT_FAILED".to_string(),
+                crypto_version: row.crypto_version,
+                revision: row.revision,
+            }),
+        }
+    }
+
+    entries.sort_by(|a, b| {
+        if a.favorite != b.favorite {
+            b.favorite.cmp(&a.favorite)
+        } else {
+            a.title.to_lowercase().cmp(&b.title.to_lowercase())
+        }
+    });
+
+    Ok(VaultLoadResult { entries, failures })
 }
 
 // -----------------------------------------------------------------------------
 // In-Memory Decryption & Serialization Helpers
 // -----------------------------------------------------------------------------
 
-pub fn decrypt_entry_row(
-    row: &EncryptedEntryRow,
-    dek: &[u8; 32],
-) -> Result<VaultEntryDto, String> {
+pub fn decrypt_entry_row(row: &EncryptedEntryRow, dek: &[u8; 32]) -> Result<VaultEntryDto, String> {
     let aad = build_entry_aad(
         row.crypto_version,
         row.payload_schema_version,
@@ -675,9 +963,14 @@ mod tests {
         let _conflict = ConflictEnvelopeRow {
             original_id: "entry-1".into(),
             owner_id: owner_id.into(),
+            crypto_version: 2,
+            payload_schema_version: 2,
             nonce: "test_nonce".into(),
             ciphertext: "test_ct".into(),
             revision: 1,
+            is_deleted: false,
+            client_updated_at: Some("2026-09-29T00:00:00Z".into()),
+            server_updated_at: None,
             created_at: "2026-09-29T00:00:00Z".into(),
         };
 
@@ -755,7 +1048,8 @@ mod tests {
 
     #[test]
     fn test_storage_audit_zero_canary_leak() {
-        let temp_dir = std::env::temp_dir().join(format!("pm_vault_leak_test_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("pm_vault_leak_test_{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir).unwrap();
         let db_path = temp_dir.join("test_audit.db");
 

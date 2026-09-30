@@ -143,8 +143,10 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
     int score = 0;
     if (password.length >= 8) score++;
     if (password.length >= 14) score++;
-    if (RegExp(r'[a-z]').hasMatch(password) && RegExp(r'[A-Z]').hasMatch(password)) score++;
-    if (RegExp(r'[0-9]').hasMatch(password) && RegExp(r'[^A-Za-z0-9]').hasMatch(password)) score++;
+    if (RegExp(r'[a-z]').hasMatch(password) &&
+        RegExp(r'[A-Z]').hasMatch(password)) score++;
+    if (RegExp(r'[0-9]').hasMatch(password) &&
+        RegExp(r'[^A-Za-z0-9]').hasMatch(password)) score++;
     return score;
   }
 
@@ -166,9 +168,26 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
 
   void _generateFakeAnswer(int index) {
     const words = [
-      "Solar", "Falcon", "Orbit", "Velvet", "Echo", "Timber", "Cobalt",
-      "Aurora", "Summit", "Zephyr", "Opal", "Canyon", "Shadow", "Cosmos",
-      "Pioneer", "Granite", "Meadow", "Breeze", "Cinder", "Glacier"
+      "Solar",
+      "Falcon",
+      "Orbit",
+      "Velvet",
+      "Echo",
+      "Timber",
+      "Cobalt",
+      "Aurora",
+      "Summit",
+      "Zephyr",
+      "Opal",
+      "Canyon",
+      "Shadow",
+      "Cosmos",
+      "Pioneer",
+      "Granite",
+      "Meadow",
+      "Breeze",
+      "Cinder",
+      "Glacier"
     ];
     final rnd = DateTime.now().microsecondsSinceEpoch;
     final w1 = words[rnd % words.length];
@@ -201,10 +220,17 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
       await widget.onSave(
         id: widget.initialEntry?.id,
         title: _titleController.text.trim(),
-        username: _usernameController.text.trim().isEmpty ? null : _usernameController.text.trim(),
-        password: _passwordController.text.isEmpty ? null : _passwordController.text,
-        url: _urlController.text.trim().isEmpty ? null : _urlController.text.trim(),
-        notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        username: _usernameController.text.trim().isEmpty
+            ? null
+            : _usernameController.text.trim(),
+        password:
+            _passwordController.text.isEmpty ? null : _passwordController.text,
+        url: _urlController.text.trim().isEmpty
+            ? null
+            : _urlController.text.trim(),
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
         securityQuestions: questions,
         tags: tagsList,
         favorite: _favorite,
@@ -232,7 +258,8 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
           borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: Color(0xFF27272A)),
         ),
-        title: const Text('Delete Entry?', style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: const Text('Delete Entry?',
+            style: TextStyle(color: Colors.white, fontSize: 16)),
         content: const Text(
           'This will permanently delete this encrypted entry from your vault.',
           style: TextStyle(color: Colors.white70, fontSize: 13),
@@ -240,10 +267,12 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF43F5E)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF43F5E)),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
@@ -294,7 +323,8 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF18181B),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.08)),
                       ),
                       alignment: Alignment.center,
                       child: ServiceIcon(
@@ -309,7 +339,11 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isCreating ? 'New Credential' : (_titleController.text.isEmpty ? 'Edit Item' : _titleController.text),
+                            isCreating
+                                ? 'New Credential'
+                                : (_titleController.text.isEmpty
+                                    ? 'Edit Item'
+                                    : _titleController.text),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -331,7 +365,9 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                     // Favorite Toggle
                     IconButton(
                       icon: Icon(
-                        _favorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                        _favorite
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
                         color: _favorite ? Colors.amber : Colors.white38,
                         size: 20,
                       ),
@@ -341,13 +377,15 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                     // Delete button if existing
                     if (!isCreating && widget.onDelete != null)
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF43F5E), size: 20),
+                        icon: const Icon(Icons.delete_outline_rounded,
+                            color: Color(0xFFF43F5E), size: 20),
                         onPressed: _confirmDelete,
                         tooltip: 'Delete Entry',
                       ),
                     // Close button
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white54, size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -369,10 +407,14 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         _buildLabel('Item Name *'),
                         TextFormField(
                           controller: _titleController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
                           onChanged: (_) => setState(() {}),
-                          decoration: _inputDecoration('e.g. Gmail, Discord, GitHub'),
-                          validator: (v) => (v == null || v.trim().isEmpty) ? 'Item name is required' : null,
+                          decoration:
+                              _inputDecoration('e.g. Gmail, Discord, GitHub'),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Item name is required'
+                              : null,
                         ),
                         const SizedBox(height: 14),
 
@@ -380,16 +422,24 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         _buildLabel('Username / Email'),
                         TextFormField(
                           controller: _usernameController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontFamily: 'monospace'),
                           decoration: _inputDecoration(
                             'e.g. user@example.com',
                             suffix: _usernameController.text.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.copy_rounded, color: Colors.white38, size: 16),
+                                    icon: const Icon(Icons.copy_rounded,
+                                        color: Colors.white38, size: 16),
                                     onPressed: () {
-                                      Clipboard.setData(ClipboardData(text: _usernameController.text));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Username copied'), duration: Duration(seconds: 1)),
+                                      Clipboard.setData(ClipboardData(
+                                          text: _usernameController.text));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text('Username copied'),
+                                            duration: Duration(seconds: 1)),
                                       );
                                     },
                                   )
@@ -409,9 +459,14 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                 padding: EdgeInsets.only(bottom: 6),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981), size: 14),
+                                    Icon(Icons.auto_awesome_rounded,
+                                        color: Color(0xFF10B981), size: 14),
                                     SizedBox(width: 4),
-                                    Text('Generate', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.w600)),
+                                    Text('Generate',
+                                        style: TextStyle(
+                                            color: Color(0xFF10B981),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -422,7 +477,10 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           onChanged: (_) => setState(() {}),
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontFamily: 'monospace'),
                           decoration: _inputDecoration(
                             '••••••••••••••••',
                             suffix: Row(
@@ -430,19 +488,27 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                               children: [
                                 IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    _obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
                                     color: Colors.white38,
                                     size: 16,
                                   ),
-                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  onPressed: () => setState(() =>
+                                      _obscurePassword = !_obscurePassword),
                                 ),
                                 if (_passwordController.text.isNotEmpty)
                                   IconButton(
-                                    icon: const Icon(Icons.copy_rounded, color: Color(0xFF10B981), size: 16),
+                                    icon: const Icon(Icons.copy_rounded,
+                                        color: Color(0xFF10B981), size: 16),
                                     onPressed: () {
-                                      Clipboard.setData(ClipboardData(text: _passwordController.text));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Password copied'), duration: Duration(seconds: 1)),
+                                      Clipboard.setData(ClipboardData(
+                                          text: _passwordController.text));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text('Password copied'),
+                                            duration: Duration(seconds: 1)),
                                       );
                                     },
                                   ),
@@ -459,15 +525,20 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                               final filled = index < strength;
                               Color c = const Color(0xFF27272A);
                               if (filled) {
-                                if (strength <= 1) c = const Color(0xFFF43F5E);
-                                else if (strength == 2) c = const Color(0xFFF59E0B);
-                                else if (strength == 3) c = const Color(0xFF3B82F6);
-                                else c = const Color(0xFF10B981);
+                                if (strength <= 1)
+                                  c = const Color(0xFFF43F5E);
+                                else if (strength == 2)
+                                  c = const Color(0xFFF59E0B);
+                                else if (strength == 3)
+                                  c = const Color(0xFF3B82F6);
+                                else
+                                  c = const Color(0xFF10B981);
                               }
                               return Expanded(
                                 child: Container(
                                   height: 4,
-                                  margin: EdgeInsets.only(right: index == 3 ? 0 : 4),
+                                  margin: EdgeInsets.only(
+                                      right: index == 3 ? 0 : 4),
                                   decoration: BoxDecoration(
                                     color: c,
                                     borderRadius: BorderRadius.circular(2),
@@ -483,7 +554,8 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         _buildLabel('Website / Service URL'),
                         TextFormField(
                           controller: _urlController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
                           onChanged: (_) => setState(() {}),
                           decoration: _inputDecoration('https://example.com'),
                         ),
@@ -493,13 +565,20 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildLabel('Security Questions (${_securityQuestions.length})'),
+                            _buildLabel(
+                                'Security Questions (${_securityQuestions.length})'),
                             TextButton.icon(
                               onPressed: _addQuestion,
-                              icon: const Icon(Icons.add_rounded, size: 14, color: Color(0xFF10B981)),
-                              label: const Text('Add Question', style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.w600)),
+                              icon: const Icon(Icons.add_rounded,
+                                  size: 14, color: Color(0xFF10B981)),
+                              label: const Text('Add Question',
+                                  style: TextStyle(
+                                      color: Color(0xFF10B981),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
@@ -513,7 +592,8 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                             final isRevealed = _revealedAnswers[idx] ?? false;
                             final isCopied = _copiedAnswerIndex == idx;
                             final currentQ = q['question'] as String? ?? '';
-                            final isPreset = _presetQuestions.contains(currentQ);
+                            final isPreset =
+                                _presetQuestions.contains(currentQ);
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
@@ -521,7 +601,8 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF18181B),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.08)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,51 +611,77 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                     children: [
                                       Expanded(
                                         child: DropdownButtonFormField<String>(
-                                          value: isPreset ? currentQ : 'Custom question...',
-                                          dropdownColor: const Color(0xFF18181B),
-                                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                                          value: isPreset
+                                              ? currentQ
+                                              : 'Custom question...',
+                                          dropdownColor:
+                                              const Color(0xFF18181B),
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12),
                                           decoration: InputDecoration(
                                             isDense: true,
-                                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8),
                                             border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: const BorderSide(
+                                                  color: Color(0xFF27272A)),
                                             ),
                                             enabledBorder: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: const BorderSide(
+                                                  color: Color(0xFF27272A)),
                                             ),
                                           ),
                                           items: _presetQuestions.map((pq) {
                                             return DropdownMenuItem(
                                               value: pq,
-                                              child: Text(pq, overflow: TextOverflow.ellipsis),
+                                              child: Text(pq,
+                                                  overflow:
+                                                      TextOverflow.ellipsis),
                                             );
                                           }).toList(),
                                           onChanged: (val) {
                                             if (val != null) {
                                               setState(() {
-                                                _securityQuestions[idx]['question'] = val == 'Custom question...' ? '' : val;
+                                                _securityQuestions[idx]
+                                                        ['question'] =
+                                                    val == 'Custom question...'
+                                                        ? ''
+                                                        : val;
                                               });
                                             }
                                           },
                                         ),
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF43F5E), size: 16),
+                                        icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: Color(0xFFF43F5E),
+                                            size: 16),
                                         onPressed: () => _removeQuestion(idx),
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
                                       ),
                                     ],
                                   ),
-                                  if (!isPreset || currentQ == 'Custom question...') ...[
+                                  if (!isPreset ||
+                                      currentQ == 'Custom question...') ...[
                                     const SizedBox(height: 6),
                                     TextFormField(
                                       initialValue: currentQ,
-                                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                                      decoration: _inputDecoration('Type your custom question...'),
-                                      onChanged: (val) => _securityQuestions[idx]['question'] = val,
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 12),
+                                      decoration: _inputDecoration(
+                                          'Type your custom question...'),
+                                      onChanged: (val) =>
+                                          _securityQuestions[idx]['question'] =
+                                              val,
                                     ),
                                   ],
                                   const SizedBox(height: 8),
@@ -582,49 +689,72 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                     children: [
                                       Expanded(
                                         child: TextFormField(
-                                          key: ValueKey('ans-$idx-${q['answer']}'),
-                                          initialValue: q['answer'] as String? ?? '',
+                                          key: ValueKey(
+                                              'ans-$idx-${q['answer']}'),
+                                          initialValue:
+                                              q['answer'] as String? ?? '',
                                           obscureText: !isRevealed,
-                                          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontFamily: 'monospace'),
                                           decoration: _inputDecoration(
                                             'Answer (encrypted)',
                                             suffix: IconButton(
                                               icon: Icon(
-                                                isRevealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                                isRevealed
+                                                    ? Icons
+                                                        .visibility_off_outlined
+                                                    : Icons.visibility_outlined,
                                                 color: Colors.white38,
                                                 size: 15,
                                               ),
                                               onPressed: () {
                                                 setState(() {
-                                                  _revealedAnswers[idx] = !isRevealed;
+                                                  _revealedAnswers[idx] =
+                                                      !isRevealed;
                                                 });
                                               },
                                             ),
                                           ),
-                                          onChanged: (val) => _securityQuestions[idx]['answer'] = val,
+                                          onChanged: (val) =>
+                                              _securityQuestions[idx]
+                                                  ['answer'] = val,
                                         ),
                                       ),
                                       const SizedBox(width: 6),
-                                      if ((q['answer'] as String? ?? '').isNotEmpty)
+                                      if ((q['answer'] as String? ?? '')
+                                          .isNotEmpty)
                                         InkWell(
                                           onTap: () {
-                                            Clipboard.setData(ClipboardData(text: q['answer'] ?? ''));
-                                            setState(() => _copiedAnswerIndex = idx);
-                                            Future.delayed(const Duration(seconds: 1), () {
-                                              if (mounted) setState(() => _copiedAnswerIndex = null);
+                                            Clipboard.setData(ClipboardData(
+                                                text: q['answer'] ?? ''));
+                                            setState(
+                                                () => _copiedAnswerIndex = idx);
+                                            Future.delayed(
+                                                const Duration(seconds: 1), () {
+                                              if (mounted)
+                                                setState(() =>
+                                                    _copiedAnswerIndex = null);
                                             });
                                           },
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           child: Container(
                                             padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
                                               color: const Color(0xFF27272A),
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Icon(
-                                              isCopied ? Icons.check_rounded : Icons.copy_rounded,
+                                              isCopied
+                                                  ? Icons.check_rounded
+                                                  : Icons.copy_rounded,
                                               size: 14,
-                                              color: isCopied ? const Color(0xFF10B981) : Colors.white70,
+                                              color: isCopied
+                                                  ? const Color(0xFF10B981)
+                                                  : Colors.white70,
                                             ),
                                           ),
                                         ),
@@ -633,18 +763,30 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                         onTap: () => _generateFakeAnswer(idx),
                                         borderRadius: BorderRadius.circular(8),
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 8),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF10B981).withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                                            color: const Color(0xFF10B981)
+                                                .withOpacity(0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: const Color(0xFF10B981)
+                                                    .withOpacity(0.3)),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981), size: 12),
+                                              Icon(Icons.auto_awesome_rounded,
+                                                  color: Color(0xFF10B981),
+                                                  size: 12),
                                               SizedBox(width: 4),
-                                              Text('Fake', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
+                                              Text('Fake',
+                                                  style: TextStyle(
+                                                      color: Color(0xFF10B981),
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
                                             ],
                                           ),
                                         ),
@@ -659,11 +801,16 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         const SizedBox(height: 14),
 
                         // Tags
-                        _buildLabel('Tags (comma separated, add "passkey" for passkeys)'),
+                        _buildLabel(
+                            'Tags (comma separated, add "passkey" for passkeys)'),
                         TextFormField(
                           controller: _tagsController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
-                          decoration: _inputDecoration('e.g. personal, passkey, work'),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontFamily: 'monospace'),
+                          decoration:
+                              _inputDecoration('e.g. personal, passkey, work'),
                         ),
                         const SizedBox(height: 14),
 
@@ -672,8 +819,10 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         TextFormField(
                           controller: _notesController,
                           maxLines: 3,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: _inputDecoration('Recovery codes, answers, PINs...'),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
+                          decoration: _inputDecoration(
+                              'Recovery codes, answers, PINs...'),
                         ),
                       ],
                     ),
@@ -693,7 +842,8 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF09090B),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                       elevation: 0,
                     ),
                     onPressed: _isSaving ? null : _submit,
@@ -701,16 +851,21 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.black),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF10B981)),
+                              const Icon(Icons.shield_outlined,
+                                  size: 16, color: Color(0xFF10B981)),
                               const SizedBox(width: 8),
                               Text(
-                                isCreating ? 'Create Encrypted Item' : 'Save Encrypted Item',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                isCreating
+                                    ? 'Create Encrypted Item'
+                                    : 'Save Encrypted Item',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ],
                           ),

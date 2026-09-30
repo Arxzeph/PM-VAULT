@@ -31,7 +31,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     try {
       final isSupported = await _auth.isDeviceSupported();
       final canCheck = await _auth.canCheckBiometrics;
-      if (mounted) setState(() => _canCheckBiometrics = isSupported && canCheck);
+      if (mounted)
+        setState(() => _canCheckBiometrics = isSupported && canCheck);
     } catch (_) {}
   }
 
@@ -74,7 +75,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _localError = e.toString().replaceAll('Exception: ', ''));
+        setState(
+            () => _localError = e.toString().replaceAll('Exception: ', ''));
       }
     }
   }
@@ -88,7 +90,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       return;
     }
     if (pwd.length < 8) {
-      setState(() => _localError = 'Master password must be at least 8 characters');
+      setState(
+          () => _localError = 'Master password must be at least 8 characters');
       return;
     }
 
@@ -115,7 +118,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: Color(0xFF27272A)),
         ),
-        title: const Text('Reset Local Database?', style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: const Text('Reset Local Database?',
+            style: TextStyle(color: Colors.white, fontSize: 16)),
         content: const Text(
           'DANGER: This will delete your local encrypted database from this phone. You can reconnect it if you know your Master Password.',
           style: TextStyle(color: Colors.white70, fontSize: 13),
@@ -123,10 +127,12 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF43F5E)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF43F5E)),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Reset', style: TextStyle(color: Colors.white)),
           ),
@@ -169,7 +175,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF18181B),
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withOpacity(0.08)),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(0.08)),
                           boxShadow: [
                             BoxShadow(
                               color: const Color(0xFF10B981).withOpacity(0.12),
@@ -179,7 +186,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(Icons.lock_rounded, color: Color(0xFF10B981), size: 28),
+                        child: const Icon(Icons.lock_rounded,
+                            color: Color(0xFF10B981), size: 28),
                       ),
                       // Passkey Badge
                       Container(
@@ -187,9 +195,11 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF09090B),
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.5)),
+                          border: Border.all(
+                              color: const Color(0xFF10B981).withOpacity(0.5)),
                         ),
-                        child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981), size: 14),
+                        child: const Icon(Icons.fingerprint_rounded,
+                            color: Color(0xFF10B981), size: 14),
                       ),
                     ],
                   ),
@@ -210,11 +220,13 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
                           color: const Color(0xFF10B981).withOpacity(0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.25)),
+                          border: Border.all(
+                              color: const Color(0xFF10B981).withOpacity(0.25)),
                         ),
                         child: const Text(
                           'Zero-Knowledge',
@@ -242,20 +254,24 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                   if (_localError != null || vault.errorMessage != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF43F5E).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFF43F5E).withOpacity(0.25)),
+                        border: Border.all(
+                            color: const Color(0xFFF43F5E).withOpacity(0.25)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.shield_outlined, color: Color(0xFFF43F5E), size: 16),
+                          const Icon(Icons.shield_outlined,
+                              color: Color(0xFFF43F5E), size: 16),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _localError ?? vault.errorMessage!,
-                              style: const TextStyle(color: Color(0xFFFDA4AF), fontSize: 12),
+                              style: const TextStyle(
+                                  color: Color(0xFFFDA4AF), fontSize: 12),
                             ),
                           ),
                         ],
@@ -270,7 +286,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
-                    child: isInit ? _buildUnlockForm(vault) : _buildInitForm(vault),
+                    child: isInit
+                        ? _buildUnlockForm(vault)
+                        : _buildInitForm(vault),
                   ),
 
                   const SizedBox(height: 20),
@@ -279,11 +297,18 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.shield_outlined, color: Color(0xFF10B981), size: 14),
+                      Icon(Icons.shield_outlined,
+                          color: Color(0xFF10B981), size: 14),
                       SizedBox(width: 6),
-                      Text(
-                        'Argon2id · XChaCha20-Poly1305 · SQLCipher',
-                        style: TextStyle(color: Colors.white38, fontSize: 10, fontFamily: 'monospace'),
+                      Flexible(
+                        child: Text(
+                          'Argon2id · XChaCha20-Poly1305 · SQLCipher',
+                          style: TextStyle(
+                              color: Colors.white38,
+                              fontSize: 10,
+                              fontFamily: 'monospace'),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -310,12 +335,16 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.account_circle_outlined, color: Colors.white54, size: 16),
+                const Icon(Icons.account_circle_outlined,
+                    color: Colors.white54, size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     vault.email!,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'monospace'),
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontFamily: 'monospace'),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -330,22 +359,27 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           controller: _passwordController,
           obscureText: _obscure,
           autofocus: true,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
           decoration: InputDecoration(
             hintText: 'Master Password',
             hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
             filled: true,
             fillColor: const Color(0xFF0C0D10),
-            prefixIcon: const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
+            prefixIcon:
+                const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                _obscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
                 color: Colors.white38,
                 size: 16,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF27272A)),
@@ -370,7 +404,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF09090B),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
             onPressed: vault.isLoading ? null : _handleUnlock,
@@ -379,7 +414,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Unlock Vault', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text('Unlock Vault',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       SizedBox(width: 8),
                       Icon(Icons.arrow_forward_rounded, size: 16),
                     ],
@@ -396,10 +433,13 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: const BorderSide(color: Color(0xFF27272A)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              icon: const Icon(Icons.fingerprint_rounded, color: Color(0xFF10B981), size: 18),
-              label: const Text('Unlock with Biometrics', style: TextStyle(fontSize: 12)),
+              icon: const Icon(Icons.fingerprint_rounded,
+                  color: Color(0xFF10B981), size: 18),
+              label: const Text('Unlock with Biometrics',
+                  style: TextStyle(fontSize: 12)),
               onPressed: _handleBiometricUnlock,
             ),
           ),
@@ -442,7 +482,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: isConnect ? const Color(0xFF27272A) : Colors.transparent,
+                      color: isConnect
+                          ? const Color(0xFF27272A)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
@@ -464,7 +506,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: !isConnect ? const Color(0xFF27272A) : Colors.transparent,
+                      color: !isConnect
+                          ? const Color(0xFF27272A)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
@@ -494,8 +538,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
             filled: true,
             fillColor: const Color(0xFF0C0D10),
-            prefixIcon: const Icon(Icons.email_outlined, color: Colors.white38, size: 16),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            prefixIcon: const Icon(Icons.email_outlined,
+                color: Colors.white38, size: 16),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF27272A)),
@@ -516,22 +562,29 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
         TextFormField(
           controller: _passwordController,
           obscureText: _obscure,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
           decoration: InputDecoration(
-            hintText: isConnect ? 'Master Password' : 'Set Master Password (min 8 chars)',
+            hintText: isConnect
+                ? 'Master Password'
+                : 'Set Master Password (min 8 chars)',
             hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
             filled: true,
             fillColor: const Color(0xFF0C0D10),
-            prefixIcon: const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
+            prefixIcon:
+                const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                _obscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
                 color: Colors.white38,
                 size: 16,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF27272A)),
@@ -555,15 +608,19 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF09090B),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               elevation: 0,
             ),
             onPressed: vault.isLoading ? null : _handleLoginOrInit,
             child: vault.isLoading
                 ? const SpinKitThreeBounce(color: Colors.black, size: 18)
                 : Text(
-                    isConnect ? 'Connect & Decrypt Vault' : 'Create Encrypted Vault',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    isConnect
+                        ? 'Connect & Decrypt Vault'
+                        : 'Create Encrypted Vault',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13),
                   ),
           ),
         ),

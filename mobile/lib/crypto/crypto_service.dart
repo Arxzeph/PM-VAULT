@@ -21,7 +21,7 @@ class CryptoService {
       desiredKeyLength: 32,
       iterations: 3,
       memory: 65536, // 64 MiB
-      lanes: 4,      // p=4 parallelism
+      lanes: 4, // p=4 parallelism
     );
     generator.init(parameters);
     final masterKey = Uint8List(32);
@@ -31,7 +31,8 @@ class CryptoService {
   }
 
   /// Derives Supabase Auth Verifier using HKDF-SHA256 (matching Rust desktop hex format)
-  static Future<String> deriveAuthVerifier(Uint8List masterKey, String email) async {
+  static Future<String> deriveAuthVerifier(
+      Uint8List masterKey, String email) async {
     final hkdf = crypto.Hkdf(hmac: crypto.Hmac.sha256(), outputLength: 32);
     final secretKey = crypto.SecretKey(masterKey);
     final derived = await hkdf.deriveKey(
@@ -83,28 +84,44 @@ class CryptoService {
   // RFC 8785 JSON Canonicalization Scheme (JCS)
   // ---------------------------------------------------------------------------
 
-  /// Deterministically serializes values per RFC 8785:
+  /// Deterministically serializes values per PM-Vault Canonical Payload v2:
   /// - Lexicographically sorted UTF-8 keys
   /// - Compact representation (no extraneous spaces)
-  /// - Numbers, booleans, and nulls formatted according to specs
+  /// - Object keys must be strings
+  /// - Integer schema values, booleans, nulls, strings and lists only
+  /// - Reject non-finite/fractional numeric values and unsupported types
   static String toCanonicalJson(dynamic value) {
     if (value == null) return 'null';
     if (value is bool) return value ? 'true' : 'false';
-    if (value is num) return value.toString();
+    if (value is int) return value.toString();
+    if (value is num) {
+      if (value.isNaN || value.isInfinite) {
+        throw ArgumentError(
+            'NaN or Infinite numeric values are not supported in canonical JSON');
+      }
+      throw ArgumentError(
+          'Non-integer numeric values are not supported in PM-Vault Canonical Payload v2');
+    }
     if (value is String) return jsonEncode(value);
     if (value is List) {
       final elements = value.map((e) => toCanonicalJson(e)).join(',');
       return '[$elements]';
     }
     if (value is Map) {
-      final sortedKeys = value.keys.map((k) => k.toString()).toList()..sort();
-      final entries = sortedKeys.map((k) {
+      final keys = <String>[];
+      for (final k in value.keys) {
+        if (k is! String) throw ArgumentError('Map keys must be strings');
+        keys.add(k);
+      }
+      keys.sort((a, b) => a.compareTo(b));
+      final entries = keys.map((k) {
         final kJson = jsonEncode(k);
         return '$kJson:${toCanonicalJson(value[k])}';
       }).join(',');
       return '{$entries}';
     }
-    return jsonEncode(value);
+    throw ArgumentError(
+        'Unsupported runtime type in canonical JSON: ${value.runtimeType}');
   }
 
   // ---------------------------------------------------------------------------
@@ -141,7 +158,10 @@ class CryptoService {
   // ---------------------------------------------------------------------------
 
   static String formatRecoveryCode(Uint8List secret) {
-    final hexStr = secret.map((b) => b.toRadixString(16).padLeft(2, '0')).join().toUpperCase();
+    final hexStr = secret
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join()
+        .toUpperCase();
     final chunks = <String>[];
     for (int i = 0; i < hexStr.length; i += 8) {
       chunks.add(hexStr.substring(i, min(i + 8, hexStr.length)));
@@ -152,7 +172,8 @@ class CryptoService {
   static Uint8List parseRecoveryCode(String codeStr) {
     final clean = codeStr.replaceAll(RegExp(r'[^0-9a-fA-F]'), '').toLowerCase();
     if (clean.length != 64) {
-      throw Exception('Recovery code must be exactly 64 hex characters (got ${clean.length})');
+      throw Exception(
+          'Recovery code must be exactly 64 hex characters (got ${clean.length})');
     }
     final result = Uint8List(32);
     for (int i = 0; i < 32; i++) {
@@ -185,7 +206,8 @@ class CryptoService {
 
     final sha256 = crypto.Sha256();
     final hash = await sha256.hash(authBytes);
-    final authHash = hash.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    final authHash =
+        hash.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
     return {
       'rek': rekBytes,
@@ -206,14 +228,16 @@ class CryptoService {
   }) async {
     final nonce = generateNonce();
     final secretKey = crypto.SecretKey(masterKey);
-    final aad = buildMasterDekAad(ownerId: ownerId, keyGeneration: keyGeneration);
+    final aad =
+        buildMasterDekAad(ownerId: ownerId, keyGeneration: keyGeneration);
     final secretBox = await _xchacha20.encrypt(
       dek,
       secretKey: secretKey,
       nonce: nonce,
       aad: utf8.encode(aad),
     );
-    final packed = Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
+    final packed =
+        Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
     return {
       'encryptedDek': base64Encode(packed),
       'nonce': base64Encode(nonce),
@@ -232,7 +256,8 @@ class CryptoService {
     final cipherPart = raw.sublist(0, raw.length - 16);
     final macPart = raw.sublist(raw.length - 16);
     final nonce = base64Decode(nonceB64);
-    final aad = buildMasterDekAad(ownerId: ownerId, keyGeneration: keyGeneration);
+    final aad =
+        buildMasterDekAad(ownerId: ownerId, keyGeneration: keyGeneration);
 
     final box = crypto.SecretBox(
       cipherPart,
@@ -256,14 +281,16 @@ class CryptoService {
   }) async {
     final nonce = generateNonce();
     final secretKey = crypto.SecretKey(rek);
-    final aad = buildRecoveryDekAad(ownerId: ownerId, recoveryGeneration: recoveryGeneration);
+    final aad = buildRecoveryDekAad(
+        ownerId: ownerId, recoveryGeneration: recoveryGeneration);
     final secretBox = await _xchacha20.encrypt(
       dek,
       secretKey: secretKey,
       nonce: nonce,
       aad: utf8.encode(aad),
     );
-    final packed = Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
+    final packed =
+        Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
     return {
       'encryptedDek': base64Encode(packed),
       'nonce': base64Encode(nonce),
@@ -282,7 +309,8 @@ class CryptoService {
     final cipherPart = raw.sublist(0, raw.length - 16);
     final macPart = raw.sublist(raw.length - 16);
     final nonce = base64Decode(nonceB64);
-    final aad = buildRecoveryDekAad(ownerId: ownerId, recoveryGeneration: recoveryGeneration);
+    final aad = buildRecoveryDekAad(
+        ownerId: ownerId, recoveryGeneration: recoveryGeneration);
 
     final box = crypto.SecretBox(
       cipherPart,
@@ -311,7 +339,8 @@ class CryptoService {
       nonce: nonce,
       aad: utf8.encode(aad),
     );
-    final packed = Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
+    final packed =
+        Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
     return {
       'ciphertext': base64Encode(packed),
       'nonce': base64Encode(nonce),
@@ -348,7 +377,8 @@ class CryptoService {
   // Legacy V1 Fallbacks (For Backward Compatibility & First-Unlock Migration)
   // ---------------------------------------------------------------------------
 
-  static Future<Map<String, String>> encryptDek(Uint8List dek, Uint8List masterKey) async {
+  static Future<Map<String, String>> encryptDek(
+      Uint8List dek, Uint8List masterKey) async {
     final nonce = generateNonce();
     final secretKey = crypto.SecretKey(masterKey);
     final secretBox = await _xchacha20.encrypt(
@@ -357,14 +387,16 @@ class CryptoService {
       nonce: nonce,
       aad: utf8.encode('pm:dek:v1'),
     );
-    final packed = Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
+    final packed =
+        Uint8List.fromList([...secretBox.cipherText, ...secretBox.mac.bytes]);
     return {
       'encryptedDek': base64Encode(packed),
       'nonce': base64Encode(nonce),
     };
   }
 
-  static Future<Uint8List> decryptDek(String encryptedDekB64, String nonceB64, Uint8List masterKey) async {
+  static Future<Uint8List> decryptDek(
+      String encryptedDekB64, String nonceB64, Uint8List masterKey) async {
     final raw = base64Decode(encryptedDekB64);
     if (raw.length < 16) throw Exception("Encrypted DEK is too short");
     final cipherPart = raw.sublist(0, raw.length - 16);
@@ -385,12 +417,19 @@ class CryptoService {
     return Uint8List.fromList(decrypted);
   }
 
-  static Future<Map<String, String>> encryptEntry(String payloadJson, Uint8List dek, String entryId) async {
-    return encryptEntryPayload(payloadJson: payloadJson, dek: dek, aad: entryId);
+  static Future<Map<String, String>> encryptEntry(
+      String payloadJson, Uint8List dek, String entryId) async {
+    return encryptEntryPayload(
+        payloadJson: payloadJson, dek: dek, aad: entryId);
   }
 
-  static Future<String> decryptEntry(String ciphertextB64, String nonceB64, Uint8List dek, String entryId) async {
-    return decryptEntryPayload(ciphertextB64: ciphertextB64, nonceB64: nonceB64, dek: dek, aad: entryId);
+  static Future<String> decryptEntry(String ciphertextB64, String nonceB64,
+      Uint8List dek, String entryId) async {
+    return decryptEntryPayload(
+        ciphertextB64: ciphertextB64,
+        nonceB64: nonceB64,
+        dek: dek,
+        aad: entryId);
   }
 
   static String generatePassword({
@@ -413,6 +452,7 @@ class CryptoService {
 
     if (pool.isEmpty) pool = lower + num;
 
-    return List.generate(length, (_) => pool[_secureRandom.nextInt(pool.length)]).join();
+    return List.generate(
+        length, (_) => pool[_secureRandom.nextInt(pool.length)]).join();
   }
 }

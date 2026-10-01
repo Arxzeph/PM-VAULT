@@ -83,15 +83,81 @@ pub struct VaultLoadResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntryPayload {
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub username: Option<String>,
+    #[serde(default)]
     pub password: Option<String>,
+    #[serde(default)]
     pub url: Option<String>,
+    #[serde(default)]
     pub notes: Option<String>,
     #[serde(default)]
     pub security_questions: Vec<SecurityQuestion>,
+    #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(default)]
     pub favorite: bool,
+}
+
+pub fn parse_entry_payload(json_str: &str) -> Result<EntryPayload, String> {
+    if let Ok(payload) = serde_json::from_str::<EntryPayload>(json_str) {
+        return Ok(payload);
+    }
+
+    let val: serde_json::Value = serde_json::from_str(json_str)
+        .map_err(|e| format!("Failed to parse decrypted entry JSON: {}", e))?;
+
+    let title = val
+        .get("title")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Untitled")
+        .to_string();
+    let username = val
+        .get("username")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let password = val
+        .get("password")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let url = val
+        .get("url")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let notes = val
+        .get("notes")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let favorite = val
+        .get("favorite")
+        .and_then(|v| v.as_bool().or_else(|| v.as_i64().map(|n| n != 0)))
+        .unwrap_or(false);
+    let tags: Vec<String> = val
+        .get("tags")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|t| t.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let security_questions: Vec<SecurityQuestion> = val
+        .get("security_questions")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+
+    Ok(EntryPayload {
+        title,
+        username,
+        password,
+        url,
+        notes,
+        security_questions,
+        tags,
+        favorite,
+    })
 }
 
 pub fn init_tables(conn: &Connection) -> Result<(), String> {
@@ -336,6 +402,69 @@ pub fn parse_nonce(nonce_b64: &str) -> Result<[u8; 24], String> {
     Ok(arr)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn decrypt_entry_raw(
+    ciphertext_b64: &str,
+    nonce_b64: &str,
+    crypto_version: u32,
+    payload_schema_version: u32,
+    owner_id: &str,
+    entry_id: &str,
+    revision: u64,
+    is_deleted: bool,
+    dek: &[u8; 32],
+) -> Result<String, String> {
+    let ct_bytes = BASE64
+        .decode(ciphertext_b64)
+        .map_err(|e| format!("Invalid base64 ciphertext: {}", e))?;
+    let nonce_arr = parse_nonce(nonce_b64)?;
+
+    let aad_candidates = if crypto_version == 1 {
+        vec![
+            entry_id.to_string(),
+            String::new(),
+            build_entry_aad(
+                crypto_version,
+                payload_schema_version,
+                owner_id,
+                entry_id,
+                revision,
+                is_deleted,
+            ),
+            build_entry_aad(2, 2, owner_id, entry_id, revision, is_deleted),
+            entry_id.to_lowercase(),
+        ]
+    } else {
+        vec![
+            build_entry_aad(
+                crypto_version,
+                payload_schema_version,
+                owner_id,
+                entry_id,
+                revision,
+                is_deleted,
+            ),
+            build_entry_aad(2, 2, owner_id, entry_id, revision, is_deleted),
+            entry_id.to_string(),
+            String::new(),
+            entry_id.to_lowercase(),
+        ]
+    };
+
+    let mut last_err = String::new();
+    for aad in &aad_candidates {
+        match decrypt_entry_payload(&ct_bytes, &nonce_arr, dek, aad) {
+            Ok(json_str) => return Ok(json_str),
+            Err(e) => last_err = e,
+        }
+    }
+
+    Err(format!(
+        "Decryption failed for entry {} (crypto_ver={}): {}",
+        entry_id, crypto_version, last_err
+    ))
+}
+
 pub fn crypto_soft_delete_entry(
     conn: &Connection,
     id: &str,
@@ -345,20 +474,18 @@ pub fn crypto_soft_delete_entry(
     let existing = get_encrypted_row_by_id(conn, id)?
         .ok_or_else(|| format!("Entry {} not found for deletion", id))?;
 
-    // 1. Verify/decrypt using old metadata
-    let old_aad = build_entry_aad(
+    // 1. Verify/decrypt using decrypt_entry_raw
+    let _ = decrypt_entry_raw(
+        &existing.ciphertext,
+        &existing.nonce,
         existing.crypto_version,
         existing.payload_schema_version,
         &existing.owner_id,
         &existing.id,
         existing.revision,
         existing.is_deleted,
-    );
-    let old_ct = BASE64
-        .decode(&existing.ciphertext)
-        .map_err(|e| e.to_string())?;
-    let old_nonce = parse_nonce(&existing.nonce)?;
-    let _ = decrypt_entry_payload(&old_ct, &old_nonce, dek, &old_aad)?;
+        dek,
+    )?;
 
     // 2. Increment revision & minimal tombstone payload
     let new_revision = existing.revision + 1;
@@ -534,19 +661,17 @@ pub fn migrate_owner_id(
         for (id, crypto_ver, schema_ver, old_nonce, old_ct, old_rev, is_deleted) in
             entries_to_update
         {
-            let old_aad = build_entry_aad(
+            let plaintext = decrypt_entry_raw(
+                &old_ct,
+                &old_nonce,
                 crypto_ver,
                 schema_ver,
                 old_owner_id,
                 &id,
                 old_rev,
                 is_deleted,
-            );
-
-            let old_ct_bytes = BASE64.decode(&old_ct).map_err(|e| e.to_string())?;
-            let old_nonce_arr = parse_nonce(&old_nonce)?;
-
-            let plaintext = decrypt_entry_payload(&old_ct_bytes, &old_nonce_arr, dek, &old_aad)?;
+                dek,
+            )?;
 
             let new_rev = old_rev + 1;
             let new_aad = build_entry_aad(2, 2, new_owner_id, &id, new_rev, is_deleted);
@@ -658,34 +783,27 @@ pub fn list_active_entries(
 // -----------------------------------------------------------------------------
 
 pub fn decrypt_entry_row(row: &EncryptedEntryRow, dek: &[u8; 32]) -> Result<VaultEntryDto, String> {
-    let aad = build_entry_aad(
+    let decrypted_json = decrypt_entry_raw(
+        &row.ciphertext,
+        &row.nonce,
         row.crypto_version,
         row.payload_schema_version,
         &row.owner_id,
         &row.id,
         row.revision,
         row.is_deleted,
-    );
+        dek,
+    )?;
 
-    let ct_bytes = BASE64
-        .decode(&row.ciphertext)
-        .map_err(|e| format!("Invalid base64 ciphertext: {}", e))?;
-    let nonce_bytes = BASE64
-        .decode(&row.nonce)
-        .map_err(|e| format!("Invalid base64 nonce: {}", e))?;
-    if nonce_bytes.len() != 24 {
-        return Err("Invalid nonce length for entry".into());
-    }
-    let mut nonce_arr = [0u8; 24];
-    nonce_arr.copy_from_slice(&nonce_bytes);
-
-    let decrypted_json = decrypt_entry_payload(&ct_bytes, &nonce_arr, dek, &aad)?;
-    let payload: EntryPayload = serde_json::from_str(&decrypted_json)
-        .map_err(|e| format!("Failed to parse decrypted entry JSON: {}", e))?;
+    let payload = parse_entry_payload(&decrypted_json)?;
 
     Ok(VaultEntryDto {
         id: row.id.clone(),
-        title: payload.title,
+        title: if payload.title.is_empty() {
+            "Untitled".to_string()
+        } else {
+            payload.title
+        },
         username: payload.username,
         password: payload.password,
         url: payload.url,
@@ -1107,5 +1225,45 @@ mod tests {
 
         // Clean up
         let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_v1_legacy_entry_backward_compatibility() {
+        use crate::crypto::encrypt_entry;
+
+        let dek = generate_dek();
+        let owner_id = "test-owner-uuid-v1";
+        let entry_id = "28b19ef9-0222-448b-8f56-7e2dfcd434ca";
+
+        // Minimal V1 JSON (no tags, no favorite, no security_questions)
+        let v1_json = r#"{"title":"Discord","username":"valorant_pro","password":"SuperSecretV1Password","url":"https://discord.com","notes":"My old account"}"#;
+
+        // Encrypt using legacy method (AAD = entry_id)
+        let (ct_bytes, nonce_bytes) = encrypt_entry(v1_json, &dek, entry_id).unwrap();
+
+        let row = EncryptedEntryRow {
+            id: entry_id.to_string(),
+            owner_id: owner_id.to_string(),
+            crypto_version: 1,
+            payload_schema_version: 1,
+            nonce: BASE64.encode(nonce_bytes),
+            ciphertext: BASE64.encode(&ct_bytes),
+            revision: 1,
+            is_deleted: false,
+            sync_state: "synced".to_string(),
+            client_updated_at: "2026-09-28T00:00:00Z".to_string(),
+            server_updated_at: None,
+        };
+
+        // Decrypt with decrypt_entry_row
+        let decrypted = decrypt_entry_row(&row, &dek).expect("V1 decryption must succeed");
+        assert_eq!(decrypted.id, entry_id);
+        assert_eq!(decrypted.title, "Discord");
+        assert_eq!(decrypted.username.as_deref(), Some("valorant_pro"));
+        assert_eq!(decrypted.password.as_deref(), Some("SuperSecretV1Password"));
+        assert_eq!(decrypted.notes.as_deref(), Some("My old account"));
+        assert!(!decrypted.favorite);
+        assert!(decrypted.tags.is_empty());
+        assert!(decrypted.security_questions.is_empty());
     }
 }

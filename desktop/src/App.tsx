@@ -194,10 +194,23 @@ export function App() {
     syncEngine.syncFullSweep();
   };
 
+  // Keyboard shortcut: Ctrl+L / Cmd+L to lock vault
+  useEffect(() => {
+    if (!status?.is_unlocked) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        handleLock();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [status?.is_unlocked]);
+
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-[#09090b] flex items-center justify-center text-zinc-400">
-        <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+      <div className="h-screen w-screen bg-[#0D0F17] flex items-center justify-center text-slate-400">
+        <Loader2 className="w-6 h-6 animate-spin text-[#38BDF8]" />
       </div>
     );
   }
@@ -249,9 +262,9 @@ export function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-5 right-5 z-50 px-3.5 py-2.5 bg-[#121316]/95 border border-white/[0.12] rounded-xl shadow-2xl text-xs text-zinc-200 flex items-center gap-2.5 backdrop-blur-md"
+            className="fixed bottom-5 right-5 z-50 px-3.5 py-2.5 bg-[#161B26]/95 border border-[#242B3D] rounded-xl shadow-2xl text-xs text-slate-200 flex items-center gap-2.5 backdrop-blur-md"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse" />
             <span className="font-medium">{toastMessage}</span>
           </motion.div>
         )}

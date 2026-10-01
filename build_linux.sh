@@ -72,8 +72,10 @@ mkdir -p dist-linux
 
 # Copy AppImage if generated
 find desktop/src-tauri/target/release/bundle/appimage -name "*.AppImage" -exec cp {} ./PM_Vault_Linux.AppImage \; 2>/dev/null || true
+find desktop/src-tauri/target/release/bundle/appimage -name "*.AppImage" -exec cp {} ./PM_2.0.0_amd64.AppImage \; 2>/dev/null || true
 # Copy Deb if generated
 find desktop/src-tauri/target/release/bundle/deb -name "*.deb" -exec cp {} ./PM_Vault_Linux.deb \; 2>/dev/null || true
+find desktop/src-tauri/target/release/bundle/deb -name "*.deb" -exec cp {} ./PM_2.0.0_amd64.deb \; 2>/dev/null || true
 # Copy raw binary
 cp desktop/src-tauri/target/release/desktop ./PM_Vault_Linux_Bin 2>/dev/null || true
 
@@ -82,9 +84,11 @@ echo "  ✅ Build Complete!"
 echo "========================================================"
 if [ -f "PM_Vault_Linux.AppImage" ]; then
     echo "  📦 Portable AppImage: ./PM_Vault_Linux.AppImage"
+    echo "  📦 Versioned AppImage: ./PM_2.0.0_amd64.AppImage"
 fi
 if [ -f "PM_Vault_Linux.deb" ]; then
     echo "  📦 Debian/Parrot Package: ./PM_Vault_Linux.deb"
+    echo "  📦 Versioned Deb: ./PM_2.0.0_amd64.deb"
 fi
 echo "  🚀 Raw Binary: ./PM_Vault_Linux_Bin"
 echo "========================================================"

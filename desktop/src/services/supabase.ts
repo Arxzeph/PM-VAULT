@@ -72,6 +72,22 @@ export const supabaseService = {
     return { user: signUpData.user, isNewUser: true };
   },
 
+  signIn: async (email: string, authVerifier: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return { error: "Supabase not configured" };
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: authVerifier,
+    });
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { user: data.user };
+  },
+
   saveRemoteVaultMeta: async (
     userId: string,
     masterSalt: string,
@@ -83,15 +99,24 @@ export const supabaseService = {
     const supabase = getSupabase();
     if (!supabase) throw new Error("Supabase client not initialized");
 
-    const { error } = await supabase.from("vault_metadata").upsert({
+    const payload: Record<string, any> = {
       id: userId,
       master_salt: masterSalt,
       encrypted_dek: encryptedDek,
       dek_nonce: dekNonce,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { error } = await supabase.from("vault_metadata").upsert({
+      ...payload,
       dek_wrap_version: dekWrapVersion,
       key_generation: keyGeneration,
-      updated_at: new Date().toISOString(),
     });
+
+    if (error && error.message.includes("column")) {
+      const res = await supabase.from("vault_metadata").upsert(payload);
+      error = res.error;
+    }
 
     if (error) {
       throw new Error(`Failed to save remote vault metadata: ${error.message}`);
@@ -104,15 +129,26 @@ export const supabaseService = {
 
     const { data, error } = await supabase
       .from("vault_metadata")
-      .select("id, master_salt, encrypted_dek, dek_nonce, dek_wrap_version, key_generation, created_at, updated_at")
+      .select("id, master_salt, encrypted_dek, dek_nonce, created_at, updated_at")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.warn("Could not fetch remote vault meta:", error.message);
       return null;
     }
-    return data as RemoteVaultMetadata;
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      master_salt: data.master_salt,
+      encrypted_dek: data.encrypted_dek,
+      dek_nonce: data.dek_nonce,
+      dek_wrap_version: (data as any).dek_wrap_version ?? 1,
+      key_generation: (data as any).key_generation ?? 1,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
   },
 
   /// Pushes an EncryptedEnvelope to Supabase using optimistic concurrency RPC.
@@ -152,21 +188,36 @@ export const supabaseService = {
     }
 
     // Direct table upsert fallback
-    const { data, error } = await supabase
+    const payload: Record<string, any> = {
+      id: envelope.id,
+      user_id: userId,
+      nonce: envelope.nonce,
+      ciphertext: envelope.ciphertext,
+      version: envelope.revision,
+      is_deleted: envelope.is_deleted,
+      client_updated_at: envelope.client_updated_at,
+    };
+
+    let { data, error } = await supabase
       .from("vault_entries")
       .upsert({
-        id: envelope.id,
-        user_id: userId,
+        ...payload,
         crypto_version: envelope.crypto_version,
         payload_schema_version: envelope.payload_schema_version,
-        nonce: envelope.nonce,
-        ciphertext: envelope.ciphertext,
         revision: envelope.revision,
-        is_deleted: envelope.is_deleted,
-        client_updated_at: envelope.client_updated_at,
       })
       .select("server_updated_at")
       .single();
+
+    if (error && error.message.includes("column")) {
+      const res = await supabase
+        .from("vault_entries")
+        .upsert(payload)
+        .select("server_updated_at")
+        .single();
+      data = res.data;
+      error = res.error;
+    }
 
     if (error) {
       throw new Error(`Failed to push envelope ${envelope.id}: ${error.message}`);
@@ -175,7 +226,7 @@ export const supabaseService = {
     return {
       success: true,
       status: "updated",
-      server_updated_at: data.server_updated_at,
+      server_updated_at: data?.server_updated_at || new Date().toISOString(),
     };
   },
 
@@ -185,9 +236,9 @@ export const supabaseService = {
     const supabase = getSupabase();
     if (!supabase) return [];
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("vault_entries")
-      .select("id, user_id, crypto_version, payload_schema_version, nonce, ciphertext, revision, is_deleted, client_updated_at, server_updated_at")
+      .select("id, user_id, ciphertext, nonce, version, is_deleted, client_updated_at, server_updated_at")
       .eq("user_id", userId);
 
     if (error) {
@@ -195,7 +246,7 @@ export const supabaseService = {
     }
 
     const envelopes: EncryptedEnvelope[] = [];
-    for (const row of data || []) {
+    for (const row of (data as any) || []) {
       if (row.user_id !== userId) {
         console.warn(`Untrusted envelope discarded: user_id mismatch (${row.user_id} !== ${userId})`);
         continue;
@@ -204,11 +255,11 @@ export const supabaseService = {
       envelopes.push({
         id: row.id,
         owner_id: userId,
-        crypto_version: row.crypto_version ?? 2,
-        payload_schema_version: row.payload_schema_version ?? 2,
+        crypto_version: row.crypto_version ?? 1,
+        payload_schema_version: row.payload_schema_version ?? 1,
         nonce: row.nonce,
         ciphertext: row.ciphertext,
-        revision: Number(row.revision ?? 1),
+        revision: Number(row.revision ?? row.version ?? 1),
         is_deleted: Boolean(row.is_deleted),
         client_updated_at: row.client_updated_at,
         server_updated_at: row.server_updated_at,

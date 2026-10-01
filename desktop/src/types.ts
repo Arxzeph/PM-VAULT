@@ -113,3 +113,36 @@ export interface RemoteVaultMetadata {
   created_at: string;
   updated_at: string;
 }
+
+export type VaultCategory = "all" | "logins" | "cards" | "ids" | "archive" | "trash";
+export type EntryType = "login" | "card" | "id";
+
+export interface PaymentCardData {
+  cardholderName: string;
+  cardNumber: string; // PAN
+  expMonth: string;
+  expYear: string;
+  cvv: string;
+  pin?: string;
+  brand: "visa" | "mastercard" | "amex" | "discover" | "other";
+  billingAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
+}
+
+export interface PersonalIdData {
+  idType: "passport" | "driver_license" | "national_id" | "residence_permit";
+  fullName: string;
+  documentNumber: string;
+  issuingAuthority: string;
+  issueDate?: string;
+  expiryDate?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  address?: string;
+}
+

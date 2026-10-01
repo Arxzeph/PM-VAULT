@@ -65,7 +65,7 @@ export const ServiceIcon: React.FC<ServiceIconProps> = ({
   const getGradient = (char: string) => {
     const gradients = [
       "from-blue-600/30 to-indigo-600/30 text-blue-300 border-blue-500/20",
-      "from-emerald-600/30 to-teal-600/30 text-emerald-300 border-emerald-500/20",
+      "from-sky-600/30 to-indigo-600/30 text-sky-300 border-sky-500/20",
       "from-violet-600/30 to-purple-600/30 text-violet-300 border-violet-500/20",
       "from-amber-600/30 to-orange-600/30 text-amber-300 border-amber-500/20",
       "from-rose-600/30 to-pink-600/30 text-rose-300 border-rose-500/20",

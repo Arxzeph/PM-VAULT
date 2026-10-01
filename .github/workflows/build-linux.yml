@@ -64,8 +64,8 @@ jobs:
       - name: Publish Public GitHub Release (No Login Needed to Download)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v0.1.0-linux"
-          name: "PM Vault Linux v0.1.0 (Parrot / Debian / Ubuntu)"
+          tag_name: "v2.0.0-linux"
+          name: "PM Vault Linux v2.0.0 (Parrot / Debian / Ubuntu)"
           draft: false
           prerelease: false
           files: |

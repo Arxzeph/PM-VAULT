@@ -116,8 +116,8 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
 
     if (score <= 1) return { score: 1, label: "Weak", color: "bg-rose-500", text: "text-rose-400" };
     if (score === 2) return { score: 2, label: "Fair", color: "bg-amber-500", text: "text-amber-400" };
-    if (score === 3) return { score: 3, label: "Good", color: "bg-blue-500", text: "text-blue-400" };
-    return { score: 4, label: "Strong", color: "bg-emerald-500", text: "text-emerald-400" };
+    if (score === 3) return { score: 3, label: "Good", color: "bg-[#6366F1]", text: "text-[#818CF8]" };
+    return { score: 4, label: "Strong", color: "bg-[#38BDF8]", text: "text-[#38BDF8]" };
   }, [password]);
 
   const handleCopy = async (text: string, type: "user" | "pass") => {
@@ -264,7 +264,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
         {/* Title */}
         <div>
           <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-            Item Name <span className="text-emerald-400">*</span>
+            Item Name <span className="text-[#38BDF8]">*</span>
           </label>
           <input
             type="text"
@@ -289,7 +289,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                 onClick={() => handleCopy(username, "user")}
                 className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition"
               >
-                {copiedUser ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {copiedUser ? <Check className="w-3 h-3 text-[#38BDF8]" /> : <Copy className="w-3 h-3" />}
                 <span>{copiedUser ? "Copied" : "Copy"}</span>
               </button>
             )}
@@ -314,7 +314,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
               <button
                 type="button"
                 onClick={() => setShowGenerator(!showGenerator)}
-                className="text-[10px] text-zinc-400 hover:text-emerald-400 flex items-center gap-1 transition"
+                className="text-[10px] text-zinc-400 hover:text-[#38BDF8] flex items-center gap-1 transition"
               >
                 <Sparkles className="w-3 h-3" />
                 <span>Generate</span>
@@ -325,7 +325,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                   onClick={() => handleCopy(password, "pass")}
                   className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition"
                 >
-                  {copiedPass ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copiedPass ? <Check className="w-3 h-3 text-[#38BDF8]" /> : <Copy className="w-3 h-3" />}
                   <span>{copiedPass ? "Copied" : "Copy"}</span>
                 </button>
               )}
@@ -421,7 +421,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
             <button
               type="button"
               onClick={handleAddQuestion}
-              className="text-[10px] text-zinc-400 hover:text-emerald-400 flex items-center gap-1 transition font-medium"
+              className="text-[10px] text-zinc-400 hover:text-[#38BDF8] flex items-center gap-1 transition font-medium"
             >
               <Plus className="w-3 h-3" />
               <span>Add Question</span>
@@ -449,7 +449,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === "Custom question...") {
-                          handleUpdateQuestion(idx, "question", "");
+                           handleUpdateQuestion(idx, "question", "");
                         } else {
                           handleUpdateQuestion(idx, "question", val);
                         }
@@ -513,7 +513,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                         title="Copy answer"
                       >
                         {isCopied ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <Check className="w-3.5 h-3.5 text-[#38BDF8]" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -523,10 +523,10 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                     <button
                       type="button"
                       onClick={() => generateFakeAnswer(idx)}
-                      className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-emerald-500/10 text-zinc-400 hover:text-emerald-400 border border-white/[0.08] hover:border-emerald-500/30 text-[10px] font-mono flex items-center gap-1 transition"
+                      className="px-2 py-1.5 rounded-lg bg-zinc-900 hover:bg-[#6366F1]/10 text-zinc-400 hover:text-[#38BDF8] border border-white/[0.08] hover:border-[#6366F1]/30 text-[10px] font-mono flex items-center gap-1 transition"
                       title="Generate high-entropy random fake answer to defeat social engineering"
                     >
-                      <Sparkles className="w-3 h-3 text-emerald-400" />
+                      <Sparkles className="w-3 h-3 text-[#38BDF8]" />
                       <span>Fake Answer</span>
                     </button>
                   </div>
@@ -573,11 +573,11 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
             disabled={saving}
             whileTap={{ scale: 0.98 }}
             whileHover={{ scale: 1.01 }}
-            className="w-full py-2 px-4 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
+            className="w-full py-2 px-4 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-xl text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+            <ShieldCheck className="w-3.5 h-3.5 text-white stroke-[2.5]" />
             <span>{saving ? "Encrypting & Syncing..." : "Save Encrypted Item"}</span>
-            <span className="kbd-badge text-[9px] bg-zinc-200 border-zinc-300 text-zinc-700 ml-1">Ctrl S</span>
+            <span className="kbd-badge text-[9px] bg-white/20 border-white/30 text-white ml-1">Ctrl S</span>
           </motion.button>
         </div>
       </form>

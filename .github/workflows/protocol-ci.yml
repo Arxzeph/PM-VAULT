@@ -1,4 +1,4 @@
-name: Protocol & Parity CI
+name: "Protocol & Parity CI"
 
 on:
   push:

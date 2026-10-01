@@ -37,4 +37,5 @@ jobs:
 
       - name: Run Rust crypto tests
         working-directory: desktop/src-tauri
-        run: cargo test --lib crypto::
+        run: cargo test --lib crypto
+

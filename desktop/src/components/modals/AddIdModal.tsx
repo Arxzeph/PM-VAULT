@@ -24,12 +24,12 @@ export const AddIdModal: React.FC<AddIdModalProps> = ({ onSave, onClose }) => {
   );
   const [fullName, setFullName] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
-  const [issuingAuthority, setIssuingAuthority] = useState("State of California, USA");
-  const [issueDate, setIssueDate] = useState("2020-05-14");
-  const [expiryDate, setExpiryDate] = useState("2030-05-14");
-  const [dateOfBirth, setDateOfBirth] = useState("1995-08-12");
-  const [nationality, setNationality] = useState("United States");
-  const [address, setAddress] = useState("742 Evergreen Terrace, San Francisco, CA");
+  const [issuingAuthority, setIssuingAuthority] = useState("");
+  const [issueDate, setIssueDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {

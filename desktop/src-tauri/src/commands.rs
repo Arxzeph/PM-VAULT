@@ -953,3 +953,17 @@ pub fn migrate_owner_id(new_owner_id: String, state: State<'_, AppState>) -> Res
     session.owner_id = new_owner_id;
     Ok(true)
 }
+
+#[tauri::command]
+pub fn get_username(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::get_meta(&conn, "username")
+}
+
+#[tauri::command]
+pub fn set_username(username: String, state: State<'_, AppState>) -> Result<bool, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::set_meta(&conn, "username", &username)?;
+    Ok(true)
+}
+

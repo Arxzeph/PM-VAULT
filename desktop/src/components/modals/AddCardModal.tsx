@@ -163,7 +163,7 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
             <div className="flex flex-col">
               <span className="text-[9px] text-slate-400 tracking-wider">CARDHOLDER</span>
               <span className="font-bold tracking-wide text-white uppercase">
-                {cardholderName || "ALEX DEV"}
+                {cardholderName || "CARDHOLDER NAME"}
               </span>
             </div>
 

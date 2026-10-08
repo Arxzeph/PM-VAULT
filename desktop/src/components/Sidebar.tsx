@@ -30,6 +30,7 @@ interface SidebarProps {
   onOpenSettings: () => void;
   onTriggerSync: () => void;
   onLockVault: () => void;
+  username?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   onTriggerSync,
   onLockVault,
+  username,
 }) => {
   return (
     <aside className="w-64 flex-shrink-0 bg-[#0C0E16] border-r border-[#242B3D] flex flex-col justify-between h-screen p-4 select-none">
@@ -69,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-slate-200 truncate group-hover:text-white">
-                Personal Vault
+                {username ? `${username}'s Vault` : "Personal Vault"}
               </span>
               <span className="text-[11px] font-mono text-slate-400">
                 {counts.all} items • Master

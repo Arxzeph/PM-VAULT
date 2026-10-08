@@ -252,7 +252,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   </div>
                   <div className="flex flex-col text-left">
                     <span className="text-xs font-semibold text-slate-200">
-                      {savedEmail || "alex@dev.io"}
+                      {savedEmail || "Personal Vault"}
                     </span>
                     <span className="text-[10px] font-mono text-slate-400">
                       Personal Vault (Master)
@@ -416,7 +416,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex@domain.com"
+                  placeholder="user@example.com"
                   className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#6366F1] font-sans"
                 />
               </div>

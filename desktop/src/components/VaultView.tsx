@@ -12,6 +12,12 @@ import { ChangePasswordModal } from "./ChangePasswordModal";
 import { UpdateModal } from "./UpdateModal";
 import { getEntryCategory, isEntryArchived, isEntryTrash } from "../services/entryHelpers";
 import { checkForAppUpdate, UpdateInfo } from "../services/updater";
+import {
+  getStoredUsername,
+  syncUsernameFromBackend,
+  subscribeUsernameChange,
+} from "../services/profile";
+
 
 interface VaultViewProps {
   entries: VaultEntry[];
@@ -53,6 +59,22 @@ export const VaultView: React.FC<VaultViewProps> = ({
       if (info) setUpdateInfo(info);
     });
   }, []);
+
+  const [username, setUsername] = useState<string>(() => getStoredUsername(userEmail));
+
+  useEffect(() => {
+    setUsername(getStoredUsername(userEmail));
+    syncUsernameFromBackend(userEmail).then((u) => {
+      if (u) setUsername(u);
+    });
+
+    const unsubscribe = subscribeUsernameChange((newName) => {
+      setUsername(newName);
+    });
+
+    return () => unsubscribe();
+  }, [userEmail]);
+
 
   // Compute category counts dynamically
   const counts = useMemo(() => {
@@ -242,6 +264,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
         onOpenSettings={() => setShowSettings(true)}
         onTriggerSync={() => onTriggerSync && onTriggerSync()}
         onLockVault={onLock}
+        username={username}
       />
 
       {/* Column 2: Aggregated / Category Item List */}

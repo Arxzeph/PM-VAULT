@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Settings,
@@ -9,8 +9,15 @@ import {
   User,
   Clock,
   Laptop,
+  Edit3,
+  Check,
 } from "lucide-react";
 import { PurgeConfirmModal } from "./PurgeConfirmModal";
+import {
+  getStoredUsername,
+  setStoredUsername,
+  formatDefaultUsername,
+} from "../../services/profile";
 
 interface SettingsModalProps {
   userEmail?: string | null;
@@ -27,6 +34,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"general" | "security" | "master_key" | "danger">("general");
   const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [username, setUsername] = useState<string>(() => getStoredUsername(userEmail));
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [tempUsername, setTempUsername] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    setUsername(getStoredUsername(userEmail));
+  }, [userEmail]);
+
+  const handleStartEdit = () => {
+    setTempUsername(username);
+    setIsEditingUsername(true);
+  };
+
+  const handleSaveUsername = async (customName?: string) => {
+    const candidate = customName !== undefined ? customName : tempUsername;
+    const clean = candidate.trim() || formatDefaultUsername(userEmail);
+    setUsername(clean);
+    setIsEditingUsername(false);
+    setTempUsername("");
+    await setStoredUsername(clean, userEmail);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingUsername(false);
+    setTempUsername("");
+  };
 
   return (
     <>
@@ -102,38 +138,158 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Tab 1: General & Profile */}
           {activeTab === "general" && (
-            <div className="flex flex-col gap-5 py-1">
-              {/* Profile Card (Without the Geometric Avatar Gimmick!) */}
-              <div className="bg-[#0D0F17] border border-[#242B3D] rounded-2xl p-5 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 p-0.5 shadow-xl">
-                    <div className="w-full h-full rounded-full bg-[#161B26] flex items-center justify-center text-slate-200">
-                      <User className="w-7 h-7 text-indigo-400" />
+            <div className="flex flex-col gap-4 py-1">
+              {/* Profile Card with Editable Username & Initials Avatar */}
+              <div className="bg-[#0D0F17] border border-[#242B3D] rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 p-0.5 shadow-xl flex-shrink-0">
+                    <div className="w-full h-full rounded-full bg-[#161B26] flex items-center justify-center text-slate-100 font-bold text-lg select-none">
+                      {username ? username.charAt(0).toUpperCase() : <User className="w-7 h-7 text-indigo-400" />}
                     </div>
                   </div>
 
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-white">Alex Dev</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30 font-semibold">
-                        • Verified Enclave
-                      </span>
-                    </div>
-                    <span className="text-xs font-mono text-slate-400 mt-0.5">
-                      {userEmail || "alex@dev.io"}
+                  <div className="flex flex-col min-w-0">
+                    {isEditingUsername ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={tempUsername}
+                          onChange={(e) => setTempUsername(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveUsername();
+                            if (e.key === "Escape") handleCancelEdit();
+                          }}
+                          placeholder="Enter username"
+                          maxLength={32}
+                          className="bg-[#161B26] border border-indigo-500 text-white text-sm font-semibold rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 font-sans"
+                        />
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleSaveUsername()}
+                          title="Save Username"
+                          className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={handleCancelEdit}
+                          title="Cancel"
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-base text-white truncate max-w-[200px]">
+                          {username}
+                        </span>
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={handleStartEdit}
+                          title="Edit Username"
+                          className="p-1 rounded-md text-slate-400 hover:text-indigo-400 hover:bg-slate-800/80 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </motion.button>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30 font-semibold whitespace-nowrap">
+                          • Verified Enclave
+                        </span>
+                        {saveSuccess && (
+                          <motion.span
+                            initial={{ opacity: 0, x: -4 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-[10px] font-mono text-emerald-400 font-semibold"
+                          >
+                            ✓ Saved
+                          </motion.span>
+                        )}
+                      </div>
+                    )}
+                    <span className="text-xs font-mono text-slate-400 mt-0.5 truncate">
+                      {userEmail || "Local Hardware Enclave"}
                     </span>
                   </div>
                 </div>
 
-                {/* Clean Single Upload Photo Button (No generic avatar button!) */}
-                <button
-                  type="button"
-                  onClick={() => alert("Photo upload feature ready in desktop file picker.")}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Photo</span>
-                </button>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {!isEditingUsername && (
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleStartEdit}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Edit Username</span>
+                    </motion.button>
+                  )}
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => alert("Photo avatar storage configured for local enclave.")}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Upload Photo</span>
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Explicit Set Username Form Card */}
+              <div className="bg-[#0D0F17] border border-[#242B3D] rounded-xl p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                      Vault Username & Identity
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Custom identity display name
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={tempUsername !== "" ? tempUsername : isEditingUsername ? "" : username}
+                      onChange={(e) => setTempUsername(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && tempUsername.trim() && tempUsername.trim() !== username) {
+                          handleSaveUsername(tempUsername);
+                        }
+                      }}
+                      placeholder="Enter custom username"
+                      maxLength={32}
+                      className="w-full bg-[#161B26] border border-[#242B3D] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#6366F1] font-sans"
+                    />
+                  </div>
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleSaveUsername(tempUsername)}
+                    disabled={!tempUsername.trim() || tempUsername.trim() === username}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      tempUsername.trim() && tempUsername.trim() !== username
+                        ? "bg-[#6366F1] hover:bg-[#5254e0] text-white shadow-md shadow-[#6366F1]/20"
+                        : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
+                    }`}
+                  >
+                    Set Username
+                  </motion.button>
+                </div>
               </div>
 
               {/* Hardware & Enclave Spec Strip */}

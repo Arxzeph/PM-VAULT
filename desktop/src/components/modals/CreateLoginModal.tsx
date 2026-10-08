@@ -200,7 +200,7 @@ export const CreateLoginModal: React.FC<CreateLoginModalProps> = ({
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="alex@domain.com or @alex_dev"
+                placeholder="user@example.com or @username"
                 className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all font-mono"
               />
             </div>

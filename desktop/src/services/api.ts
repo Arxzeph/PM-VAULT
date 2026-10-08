@@ -191,4 +191,21 @@ export const api = {
       newOwnerId,
     });
   },
+
+  getUsername: async (): Promise<string | null> => {
+    try {
+      return await invoke<string | null>("get_username");
+    } catch {
+      return null;
+    }
+  },
+
+  setUsername: async (username: string): Promise<boolean> => {
+    try {
+      return await invoke<boolean>("set_username", { username });
+    } catch {
+      return false;
+    }
+  },
 };
+

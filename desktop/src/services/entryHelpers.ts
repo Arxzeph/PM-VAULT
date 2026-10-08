@@ -224,13 +224,13 @@ export function parseIdData(entry: VaultEntry): PersonalIdData {
 
   return {
     idType: meta.idType || "driver_license",
-    fullName: entry.username || "ALEX DEV",
-    documentNumber: entry.password || "DOC-89210",
-    issuingAuthority: entry.url || meta.issuingAuthority || "State Authority",
-    issueDate: meta.issueDate || "2020-01-01",
-    expiryDate: meta.expiryDate || "2030-01-01",
-    dateOfBirth: meta.dateOfBirth || "1995-05-15",
-    nationality: meta.nationality || "United States",
-    address: meta.address || "742 Market Street, San Francisco, CA",
+    fullName: entry.username || "",
+    documentNumber: entry.password || "",
+    issuingAuthority: entry.url || meta.issuingAuthority || "",
+    issueDate: meta.issueDate || "",
+    expiryDate: meta.expiryDate || "",
+    dateOfBirth: meta.dateOfBirth || "",
+    nationality: meta.nationality || "",
+    address: meta.address || "",
   };
 }

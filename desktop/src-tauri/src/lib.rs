@@ -56,7 +56,9 @@ pub fn run() {
             get_recovery_questions,
             recover_vault_with_questions,
             recover_vault_with_code,
-            migrate_owner_id
+            migrate_owner_id,
+            get_username,
+            set_username
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

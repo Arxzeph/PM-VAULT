@@ -1,23 +1,21 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { VaultEntry, SaveEntryInput, VaultCategory } from "../types";
 import { Sidebar } from "./Sidebar";
 import { ItemList } from "./ItemList";
 import { ItemInspector } from "./ItemInspector";
 import { CreateLoginModal } from "./modals/CreateLoginModal";
-import { AddCardModal } from "./modals/AddCardModal";
-import { AddIdModal } from "./modals/AddIdModal";
+import { PasswordGenerator } from "./PasswordGenerator";
 import { SettingsModal } from "./modals/SettingsModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { UpdateModal } from "./UpdateModal";
-import { getEntryCategory, isEntryArchived, isEntryTrash } from "../services/entryHelpers";
+import { isEntryArchived, isEntryTrash } from "../services/entryHelpers";
 import { checkForAppUpdate, UpdateInfo } from "../services/updater";
 import {
   getStoredUsername,
   syncUsernameFromBackend,
   subscribeUsernameChange,
 } from "../services/profile";
-
 
 interface VaultViewProps {
   entries: VaultEntry[];
@@ -46,8 +44,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
   // Modals
   const [showCreateLogin, setShowCreateLogin] = useState(false);
   const [editingLoginEntry, setEditingLoginEntry] = useState<VaultEntry | null>(null);
-  const [showAddCard, setShowAddCard] = useState(false);
-  const [showAddId, setShowAddId] = useState(false);
+  const [showPasswordGenerator, setShowPasswordGenerator] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -75,20 +72,16 @@ export const VaultView: React.FC<VaultViewProps> = ({
     return () => unsubscribe();
   }, [userEmail]);
 
-
-  // Compute category counts dynamically
+  // Compute category counts dynamically for password vault
   const counts = useMemo(() => {
     let all = 0;
     let logins = 0;
-    let cards = 0;
-    let ids = 0;
     let archive = 0;
     let trash = 0;
 
     entries.forEach((entry) => {
       const isArch = isEntryArchived(entry);
       const isTr = isEntryTrash(entry);
-      const cat = getEntryCategory(entry);
 
       if (isTr) {
         trash++;
@@ -96,13 +89,11 @@ export const VaultView: React.FC<VaultViewProps> = ({
         archive++;
       } else {
         all++;
-        if (cat === "login") logins++;
-        if (cat === "card") cards++;
-        if (cat === "id") ids++;
+        logins++;
       }
     });
 
-    return { all, logins, cards, ids, archive, trash };
+    return { all, logins, cards: 0, ids: 0, archive, trash };
   }, [entries]);
 
   // Set default selection when category changes or entries update
@@ -217,7 +208,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
   };
 
   const handlePermanentDelete = async (id: string) => {
-    if (window.confirm("Permanently shred this record from encrypted storage?")) {
+    if (window.confirm("Permanently shred this password from encrypted storage?")) {
       await onDeleteEntry(id);
       if (selectedEntryId === id) {
         setSelectedEntryId(null);
@@ -226,7 +217,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
   };
 
   const handleEmptyTrash = async () => {
-    if (window.confirm("Permanently shred all items currently in the Trash?")) {
+    if (window.confirm("Permanently shred all passwords currently in the Trash?")) {
       const trashItems = entries.filter((e) => isEntryTrash(e));
       for (const item of trashItems) {
         await onDeleteEntry(item.id);
@@ -236,15 +227,8 @@ export const VaultView: React.FC<VaultViewProps> = ({
   };
 
   const handleEditEntry = (entry: VaultEntry) => {
-    const cat = getEntryCategory(entry);
-    if (cat === "card") {
-      setShowAddCard(true);
-    } else if (cat === "id") {
-      setShowAddId(true);
-    } else {
-      setEditingLoginEntry(entry);
-      setShowCreateLogin(true);
-    }
+    setEditingLoginEntry(entry);
+    setShowCreateLogin(true);
   };
 
   const handlePurgeAccount = async () => {
@@ -254,8 +238,12 @@ export const VaultView: React.FC<VaultViewProps> = ({
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#0D0F17] overflow-hidden select-none font-sans">
-      {/* Column 1: Standardized V2 Navigation Sidebar */}
+    <div className="flex h-screen w-screen bg-[#0C0E16] overflow-hidden select-none font-sans relative">
+      {/* Background Ambient Glows */}
+      <div className="pointer-events-none absolute -top-40 left-1/4 w-[500px] h-[500px] rounded-full bg-[#6366F1]/8 blur-[140px]" />
+      <div className="pointer-events-none absolute -bottom-40 right-1/4 w-[500px] h-[500px] rounded-full bg-[#38BDF8]/8 blur-[140px]" />
+
+      {/* Column 1: Password Vault Navigation Sidebar */}
       <Sidebar
         activeCategory={activeCategory}
         onSelectCategory={setActiveCategory}
@@ -264,10 +252,11 @@ export const VaultView: React.FC<VaultViewProps> = ({
         onOpenSettings={() => setShowSettings(true)}
         onTriggerSync={() => onTriggerSync && onTriggerSync()}
         onLockVault={onLock}
+        onOpenGenerator={() => setShowPasswordGenerator(true)}
         username={username}
       />
 
-      {/* Column 2: Aggregated / Category Item List */}
+      {/* Column 2: Password Items List */}
       <ItemList
         entries={entries}
         selectedEntryId={selectedEntryId}
@@ -277,12 +266,10 @@ export const VaultView: React.FC<VaultViewProps> = ({
           setEditingLoginEntry(null);
           setShowCreateLogin(true);
         }}
-        onOpenAddCard={() => setShowAddCard(true)}
-        onOpenAddId={() => setShowAddId(true)}
         onEmptyTrash={handleEmptyTrash}
       />
 
-      {/* Column 3: Rich Item Detail Inspector */}
+      {/* Column 3: Rich Password Detail Inspector */}
       <ItemInspector
         entry={selectedEntry}
         activeCategory={activeCategory}
@@ -295,7 +282,7 @@ export const VaultView: React.FC<VaultViewProps> = ({
         onToggleFavorite={handleToggleFavorite}
       />
 
-      {/* Modals */}
+      {/* Modals & Overlays */}
       <AnimatePresence>
         {showCreateLogin && (
           <CreateLoginModal
@@ -309,20 +296,18 @@ export const VaultView: React.FC<VaultViewProps> = ({
           />
         )}
 
-        {showAddCard && (
-          <AddCardModal
-            key="modal-add-card"
-            onSave={onSaveEntry}
-            onClose={() => setShowAddCard(false)}
-          />
-        )}
-
-        {showAddId && (
-          <AddIdModal
-            key="modal-add-id"
-            onSave={onSaveEntry}
-            onClose={() => setShowAddId(false)}
-          />
+        {showPasswordGenerator && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowPasswordGenerator(false);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0C0E16]/85 backdrop-blur-xl"
+          >
+            <PasswordGenerator onClose={() => setShowPasswordGenerator(false)} />
+          </motion.div>
         )}
 
         {showSettings && (

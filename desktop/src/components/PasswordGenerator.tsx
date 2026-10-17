@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { api } from "../services/api";
 import { copyWithAutoWipe } from "../services/clipboard";
 import { Copy, Check, RefreshCw, X, Sparkles } from "lucide-react";
+import { ClickSpark } from "./reactbits/ClickSpark";
 
 interface PasswordGeneratorProps {
   onSelectPassword?: (pwd: string) => void;
@@ -93,17 +94,19 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={copyToClipboard}
-            title="Copy Password"
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-[#38BDF8] transition"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-[#38BDF8]" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
-            )}
-          </button>
+          <ClickSpark sparkColor="#38BDF8" sparkCount={8}>
+            <button
+              onClick={copyToClipboard}
+              title="Copy Password"
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-[#38BDF8] transition cursor-pointer"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-[#38BDF8]" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </ClickSpark>
         </div>
       </div>
 

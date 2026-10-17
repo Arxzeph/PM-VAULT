@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { VaultEntry, SaveEntryInput } from "../../types";
 import { detectBrandFromInput, DetectedBrand } from "../../services/entryHelpers";
 import { api } from "../../services/api";
-import { SpotlightCard } from "../reactbits/SpotlightCard";
-import { StarBorder } from "../reactbits/StarBorder";
 import {
   KeyRound,
   X,
@@ -120,304 +118,309 @@ export const CreateLoginModal: React.FC<CreateLoginModalProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.16 }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0C0E16]/85 backdrop-blur-xl select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0C0E16]/80 backdrop-blur-md select-none"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 12 }}
-        transition={{ type: "spring", damping: 26, stiffness: 360 }}
-        className="max-w-xl w-full"
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ type: "spring", damping: 28, stiffness: 380 }}
+        className="max-w-xl w-full bg-[#161B26] border border-[#242B3D] rounded-2xl shadow-2xl p-6 relative flex flex-col gap-5 text-white max-h-[92vh] overflow-y-auto"
       >
-        <SpotlightCard
-          spotlightColor="rgba(56, 189, 248, 0.12)"
-          borderGlowColor="rgba(56, 189, 248, 0.35)"
-          className="bg-[#161B26]/90 border border-[#242B3D] rounded-3xl shadow-2xl p-6 relative flex flex-col gap-5 text-white max-h-[90vh] overflow-y-auto backdrop-blur-2xl"
-        >
-          {/* Modal Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-[#242B3D]">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-[#38BDF8]">
-                <KeyRound className="w-5 h-5 text-[#38BDF8]" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-white">
-                  {initialEntry ? "Edit Password Entry" : "Create New Password"}
-                </h2>
-                <span className="text-[11px] font-mono text-slate-400">
-                  Argon2id + ChaCha20-Poly1305 Zero-Knowledge
-                </span>
-              </div>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between pb-3.5 border-b border-[#242B3D]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-[#38BDF8] shadow-sm">
+              <KeyRound className="w-5 h-5 text-[#38BDF8]" />
             </div>
-
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </motion.button>
+            <div>
+              <h2 className="text-base font-display font-bold text-white tracking-tight">
+                {initialEntry ? "Edit Password Entry" : "Create New Password"}
+              </h2>
+              <span className="text-[10px] font-mono tracking-wider text-slate-400 uppercase font-medium">
+                Argon2id + ChaCha20-Poly1305 Zero-Knowledge
+              </span>
+            </div>
           </div>
 
-          {/* Form Body */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Service Name with Dynamic Brand Detection */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-400">Service / Website Name</label>
-                {detectedBrand && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-[#38BDF8] border border-indigo-500/30 font-medium"
-                  >
-                    Detected: {detectedBrand.name}
-                  </motion.span>
-                )}
-              </div>
+          <motion.button
+            whileHover={{ scale: 1.08, rotate: 90 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </motion.button>
+        </div>
 
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. GitHub, Google, Netflix, AWS..."
-                  className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 focus:ring-1 focus:ring-[#38BDF8]/30 transition-all font-sans"
-                />
-              </div>
-
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Service Name with Dynamic Brand Detection */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-slate-300 font-sans tracking-normal">
+                Service / Website Name
+              </label>
               {detectedBrand && (
-                <span className="text-[11px] font-mono text-[#38BDF8]">
-                  ✓ Auto-detected brand & suggested URL matched
-                </span>
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-[#38BDF8] border border-indigo-500/30 font-medium"
+                >
+                  Detected: {detectedBrand.name}
+                </motion.span>
               )}
             </div>
 
-            {/* Username / Email */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400">Username or Email</label>
+            <div className="relative">
               <input
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="user@example.com or username"
-                className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 focus:ring-1 focus:ring-[#38BDF8]/30 transition-all font-mono"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. GitHub, Google, Netflix, AWS..."
+                className="w-full bg-[#0D0F17] border border-[#242B3D] focus:border-[#38BDF8]/70 focus:ring-1 focus:ring-[#38BDF8]/40 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all font-sans font-medium"
               />
             </div>
 
-            {/* Password with Inline Generator */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-400">Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowGenerator((prev) => !prev)}
-                  className="flex items-center gap-1 text-[11px] font-mono text-[#38BDF8] hover:text-white cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3 text-[#38BDF8]" />
-                  <span>{showGenerator ? "Hide Generator" : "Generate Strong Password"}</span>
-                </button>
-              </div>
+            {detectedBrand && (
+              <span className="text-[11px] font-mono text-[#38BDF8]">
+                ✓ Auto-detected brand & suggested URL matched
+              </span>
+            )}
+          </div>
 
-              <div className="flex items-center bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 focus-within:border-[#38BDF8]/60 focus-within:ring-1 focus-within:ring-[#38BDF8]/30">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter or generate cryptographic password"
-                  className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="p-1 text-slate-400 hover:text-white cursor-pointer ml-2"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+          {/* Username / Email */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-slate-300 font-sans tracking-normal">
+              Username or Email
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="user@example.com or username"
+              className="w-full bg-[#0D0F17] border border-[#242B3D] focus:border-[#38BDF8]/70 focus:ring-1 focus:ring-[#38BDF8]/40 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all font-sans font-medium"
+            />
+          </div>
 
-              {/* In-Line Generator Panel */}
-              <AnimatePresence>
-                {showGenerator && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="bg-[#0D0F17] border border-[#242B3D] rounded-xl p-3 flex flex-col gap-3 mt-1 overflow-hidden"
-                  >
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-400">Length: {genLength}</span>
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
-                          <input
-                            type="checkbox"
-                            checked={genSymbols}
-                            onChange={(e) => setGenSymbols(e.target.checked)}
-                            className="rounded bg-slate-800 border-slate-700 text-[#6366F1] focus:ring-0"
-                          />
-                          <span>Symbols</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
-                          <input
-                            type="checkbox"
-                            checked={genNumbers}
-                            onChange={(e) => setGenNumbers(e.target.checked)}
-                            className="rounded bg-slate-800 border-slate-700 text-[#6366F1] focus:ring-0"
-                          />
-                          <span>Numbers</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={12}
-                        max={48}
-                        value={genLength}
-                        onChange={(e) => setGenLength(Number(e.target.value))}
-                        className="flex-1 accent-[#38BDF8]"
-                      />
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={handleGeneratePassword}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/40 text-[#38BDF8] border border-indigo-500/40 text-xs font-semibold cursor-pointer"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Regenerate</span>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Website URL */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400">Website URL (Autofill Target)</label>
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/login"
-                className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 focus:ring-1 focus:ring-[#38BDF8]/30 transition-all font-mono"
-              />
-            </div>
-
-            {/* Secure Notes */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400">Secure Notes (Optional)</label>
-              <textarea
-                rows={2}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Recovery questions, PINs, or private notes..."
-                className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 resize-none font-mono"
-              />
-            </div>
-
-            {/* Custom Dark Vault Selection Popover */}
-            <div className="flex flex-col gap-1.5 relative" ref={vaultDropdownRef}>
-              <label className="text-xs font-medium text-slate-400">Target Vault</label>
+          {/* Password with Inline Generator */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-slate-300 font-sans tracking-normal">
+                Password
+              </label>
               <button
                 type="button"
-                onClick={() => setShowVaultDropdown((prev) => !prev)}
-                className="w-full bg-[#0D0F17]/90 border border-[#242B3D] hover:border-slate-700 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-left cursor-pointer transition-colors"
+                onClick={() => setShowGenerator((prev) => !prev)}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#38BDF8] hover:text-white cursor-pointer font-sans transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <Lock className="w-4 h-4 text-[#38BDF8]" />
-                  <span className="text-xs font-medium text-slate-200">{selectedVault}</span>
-                </div>
-                <ChevronDown className="w-4 h-4 text-slate-500" />
+                <Sparkles className="w-3.5 h-3.5 text-[#38BDF8]" />
+                <span>{showGenerator ? "Hide Generator" : "Generate Strong Password"}</span>
               </button>
-
-              <AnimatePresence>
-                {showVaultDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 top-full mt-1.5 w-full bg-[#161B26] border border-[#242B3D] rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-xl"
-                  >
-                    <div
-                      onClick={() => {
-                        setSelectedVault("Personal Vault (Master)");
-                        setShowVaultDropdown(false);
-                      }}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-3.5 h-3.5 text-[#38BDF8]" />
-                        <span>Personal Vault (Master)</span>
-                      </div>
-                      {selectedVault === "Personal Vault (Master)" && (
-                        <Check className="w-4 h-4 text-[#38BDF8]" />
-                      )}
-                    </div>
-
-                    <div
-                      onClick={() => {
-                        setSelectedVault("Work / Engineering Enclave");
-                        setShowVaultDropdown(false);
-                      }}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>Work / Engineering Enclave</span>
-                      </div>
-                      {selectedVault === "Work / Engineering Enclave" && (
-                        <Check className="w-4 h-4 text-[#38BDF8]" />
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#242B3D] mt-2">
-              <motion.button
+            <div className="flex items-center bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2.5 focus-within:border-[#38BDF8]/70 focus-within:ring-1 focus-within:ring-[#38BDF8]/40 transition-all">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter or generate cryptographic password"
+                className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono tracking-wider font-medium"
+              />
+              <button
                 type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="p-1 text-slate-400 hover:text-white cursor-pointer ml-2 transition-colors"
               >
-                Cancel
-              </motion.button>
-
-              <StarBorder
-                type="submit"
-                disabled={saving}
-                color="#6366F1"
-                trailColor="#38BDF8"
-              >
-                <div className="flex items-center gap-2 text-xs font-semibold text-white py-0.5 px-2">
-                  {saving ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#38BDF8]" />
-                      <span>Sealing Key...</span>
-                    </>
-                  ) : (
-                    <span>Save to Encrypted Vault</span>
-                  )}
-                </div>
-              </StarBorder>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-          </form>
-        </SpotlightCard>
+
+            {/* In-Line Generator Panel */}
+            <AnimatePresence>
+              {showGenerator && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="bg-[#0D0F17] border border-[#242B3D] rounded-xl p-3 flex flex-col gap-3 mt-1 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-slate-400">Length: {genLength}</span>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={genSymbols}
+                          onChange={(e) => setGenSymbols(e.target.checked)}
+                          className="rounded bg-slate-800 border-slate-700 text-[#6366F1] focus:ring-0"
+                        />
+                        <span>Symbols</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={genNumbers}
+                          onChange={(e) => setGenNumbers(e.target.checked)}
+                          className="rounded bg-slate-800 border-slate-700 text-[#6366F1] focus:ring-0"
+                        />
+                        <span>Numbers</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={12}
+                      max={48}
+                      value={genLength}
+                      onChange={(e) => setGenLength(Number(e.target.value))}
+                      className="flex-1 accent-[#38BDF8] cursor-pointer"
+                    />
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleGeneratePassword}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/40 text-[#38BDF8] border border-indigo-500/40 text-xs font-semibold cursor-pointer font-sans"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Regenerate</span>
+                    </motion.button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Website URL */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-slate-300 font-sans tracking-normal">
+              Website URL (Autofill Target)
+            </label>
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/login"
+              className="w-full bg-[#0D0F17] border border-[#242B3D] focus:border-[#38BDF8]/70 focus:ring-1 focus:ring-[#38BDF8]/40 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-sans font-medium"
+            />
+          </div>
+
+          {/* Secure Notes */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-slate-300 font-sans tracking-normal">
+              Secure Notes (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Recovery questions, PINs, or private notes..."
+              className="w-full bg-[#0D0F17] border border-[#242B3D] focus:border-[#38BDF8]/70 focus:ring-1 focus:ring-[#38BDF8]/40 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-all font-sans font-medium resize-none"
+            />
+          </div>
+
+          {/* Custom Dark Vault Selection Popover */}
+          <div className="flex flex-col gap-1.5 relative" ref={vaultDropdownRef}>
+            <label className="text-[11px] font-semibold text-slate-300 font-sans tracking-normal">
+              Target Vault
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowVaultDropdown((prev) => !prev)}
+              className="w-full bg-[#0D0F17] border border-[#242B3D] hover:border-slate-700 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-left cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Lock className="w-4 h-4 text-[#38BDF8]" />
+                <span className="text-xs font-semibold text-slate-200 font-sans">{selectedVault}</span>
+              </div>
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            </button>
+
+            <AnimatePresence>
+              {showVaultDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                  transition={{ duration: 0.14 }}
+                  className="absolute left-0 top-full mt-1.5 w-full bg-[#161B26] border border-[#242B3D] rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-xl"
+                >
+                  <div
+                    onClick={() => {
+                      setSelectedVault("Personal Vault (Master)");
+                      setShowVaultDropdown(false);
+                    }}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 cursor-pointer font-sans"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 text-[#38BDF8]" />
+                      <span>Personal Vault (Master)</span>
+                    </div>
+                    {selectedVault === "Personal Vault (Master)" && (
+                      <Check className="w-4 h-4 text-[#38BDF8]" />
+                    )}
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      setSelectedVault("Work / Engineering Enclave");
+                      setShowVaultDropdown(false);
+                    }}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-200 cursor-pointer font-sans"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Work / Engineering Enclave</span>
+                    </div>
+                    {selectedVault === "Work / Engineering Enclave" && (
+                      <Check className="w-4 h-4 text-[#38BDF8]" />
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-3 pt-3.5 border-t border-[#242B3D] mt-2">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-sans"
+            >
+              Cancel
+            </motion.button>
+
+            <motion.button
+              type="submit"
+              disabled={saving}
+              whileHover={!saving ? { scale: 1.02 } : undefined}
+              whileTap={!saving ? { scale: 0.98 } : undefined}
+              className="px-5 py-2.5 rounded-xl bg-[#6366F1] hover:bg-[#5254e0] disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-[#6366F1]/20 border border-[#818CF8]/30 flex items-center gap-2 transition-all cursor-pointer font-sans tracking-tight"
+            >
+              {saving ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#38BDF8]" />
+                  <span>Sealing Key...</span>
+                </>
+              ) : (
+                <span>Save to Encrypted Vault</span>
+              )}
+            </motion.button>
+          </div>
+        </form>
       </motion.div>
     </motion.div>
   );

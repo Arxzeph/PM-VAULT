@@ -197,22 +197,18 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
 
   return (
     <div className="h-screen w-screen bg-[#0C0E16] flex flex-col justify-between items-center relative overflow-hidden select-none font-sans text-white">
-      {/* Background Ambient Mesh Subtle Glow */}
-      <div className="pointer-events-none absolute -top-40 -left-40 w-96 h-96 rounded-full bg-[#6366F1]/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-[#38BDF8]/10 blur-[120px]" />
-
       {/* Top Enclave Telemetry Strip */}
       <header className="w-full py-2.5 px-6 border-b border-[#242B3D]/70 bg-[#0C0E16]/80 backdrop-blur-xl flex items-center justify-between text-[11px] font-mono text-slate-400 z-10">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-slate-300">
+          <span className="flex items-center gap-1.5 text-slate-300 font-mono">
             <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse" />
             NODE://LOCAL_ENCLAVE_ISOLATED
           </span>
           <span className="text-slate-600">•</span>
-          <span className="text-slate-300">TPM 2.0 ACTIVE</span>
+          <span className="text-slate-300 font-mono">TPM 2.0 ACTIVE</span>
         </div>
 
-        <div className="flex items-center gap-4 text-slate-400">
+        <div className="flex items-center gap-4 text-slate-400 font-mono">
           <span>ARGON2ID-CHACHA20-POLY1305</span>
           <span className="text-slate-600">•</span>
           <span className="text-[#38BDF8]">ZERO-KNOWLEDGE STRICT</span>
@@ -228,9 +224,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
           className="max-w-md w-full"
         >
           <SpotlightCard
-            spotlightColor="rgba(56, 189, 248, 0.12)"
-            borderGlowColor="rgba(56, 189, 248, 0.4)"
-            className="p-8 bg-[#161B26]/80 backdrop-blur-2xl border border-[#242B3D] shadow-2xl flex flex-col gap-6"
+            spotlightColor="rgba(56, 189, 248, 0.1)"
+            borderGlowColor="rgba(56, 189, 248, 0.35)"
+            className="p-8 bg-[#161B26]/90 backdrop-blur-2xl border border-[#242B3D] shadow-2xl flex flex-col gap-6"
           >
             {/* Brand Header */}
             <div className="flex flex-col items-center text-center gap-3">
@@ -240,12 +236,12 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
 
               <div className="flex flex-col">
                 <div className="flex items-center justify-center gap-2">
-                  <h1 className="text-xl font-bold tracking-wider text-white">PM-VAULT</h1>
+                  <h1 className="text-xl font-display font-bold tracking-wider text-white">PM-VAULT</h1>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-[#38BDF8] border border-indigo-500/30 font-semibold">
                     v2.4
                   </span>
                 </div>
-                <p className="text-xs font-mono text-slate-400 mt-1">
+                <p className="text-[11px] font-mono text-slate-400 mt-1 tracking-widest uppercase">
                   ZERO-KNOWLEDGE HARDWARE ENCLAVE
                 </p>
               </div>

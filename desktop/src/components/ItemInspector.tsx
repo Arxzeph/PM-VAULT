@@ -141,7 +141,7 @@ export const ItemInspector: React.FC<ItemInspectorProps> = ({
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-white tracking-tight truncate">
+              <h1 className="text-lg font-display font-bold text-white tracking-tight truncate">
                 {entry.title}
               </h1>
               {entry.favorite && (

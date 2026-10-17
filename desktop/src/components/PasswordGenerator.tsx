@@ -71,7 +71,7 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
           <div className="w-6 h-6 rounded-lg bg-[#0D0F17] border border-[#242B3D] flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-[#38BDF8]" />
           </div>
-          <h3 className="font-semibold text-xs tracking-tight text-white">Cryptographic Password Generator</h3>
+          <h3 className="font-display font-bold text-xs tracking-tight text-white">Cryptographic Password Generator</h3>
         </div>
         {onClose && (
           <button

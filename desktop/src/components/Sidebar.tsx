@@ -55,12 +55,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-wider text-white">PM-VAULT</span>
+              <span className="font-display font-bold text-sm tracking-wider text-white">PM-VAULT</span>
               <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-[#38BDF8] border border-indigo-500/30 font-medium">
                 v2.4
               </span>
             </div>
-            <span className="text-[11px] font-mono text-slate-400">PASSWORD ENCLAVE</span>
+            <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">PASSWORD ENCLAVE</span>
           </div>
         </div>
 

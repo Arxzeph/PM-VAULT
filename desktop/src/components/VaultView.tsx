@@ -239,9 +239,6 @@ export const VaultView: React.FC<VaultViewProps> = ({
 
   return (
     <div className="flex h-screen w-screen bg-[#0C0E16] overflow-hidden select-none font-sans relative">
-      {/* Background Ambient Glows */}
-      <div className="pointer-events-none absolute -top-40 left-1/4 w-[500px] h-[500px] rounded-full bg-[#6366F1]/8 blur-[140px]" />
-      <div className="pointer-events-none absolute -bottom-40 right-1/4 w-[500px] h-[500px] rounded-full bg-[#38BDF8]/8 blur-[140px]" />
 
       {/* Column 1: Password Vault Navigation Sidebar */}
       <Sidebar

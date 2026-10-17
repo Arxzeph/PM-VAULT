@@ -101,10 +101,10 @@ export const ItemList: React.FC<ItemListProps> = ({
       <div className="p-4 border-b border-[#242B3D]/70 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <h1 className="text-sm font-bold text-white tracking-tight">
+            <h1 className="text-sm font-display font-bold text-white tracking-tight">
               {categoryTitles[activeCategory] || "Passwords"}
             </h1>
-            <span className="text-[11px] font-mono text-slate-400">
+            <span className="text-[10px] font-mono text-slate-400">
               {filteredEntries.length} {filteredEntries.length === 1 ? "password" : "passwords"} • Zero-Knowledge
             </span>
           </div>

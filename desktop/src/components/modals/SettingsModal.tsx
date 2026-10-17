@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Settings,
@@ -11,12 +11,15 @@ import {
   Laptop,
   Edit3,
   Check,
+  Trash2,
 } from "lucide-react";
 import { PurgeConfirmModal } from "./PurgeConfirmModal";
 import {
   getStoredUsername,
   setStoredUsername,
   formatDefaultUsername,
+  getStoredAvatar,
+  setStoredAvatar,
 } from "../../services/profile";
 
 interface SettingsModalProps {
@@ -35,12 +38,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<"general" | "security" | "master_key" | "danger">("general");
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [username, setUsername] = useState<string>(() => getStoredUsername(userEmail));
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getStoredAvatar(userEmail));
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempUsername, setTempUsername] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setUsername(getStoredUsername(userEmail));
+    setAvatarUrl(getStoredAvatar(userEmail));
   }, [userEmail]);
 
   const handleStartEdit = () => {
@@ -64,6 +72,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setTempUsername("");
   };
 
+  // Upload Photo File Handler with Canvas Scaling
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setAvatarMessage("Please select a valid image file (PNG, JPG, WebP)");
+      setTimeout(() => setAvatarMessage(null), 3000);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const src = event.target?.result as string;
+      if (!src) return;
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 256;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          // Center crop to square
+          const minSide = Math.min(img.width, img.height);
+          const startX = (img.width - minSide) / 2;
+          const startY = (img.height - minSide) / 2;
+          ctx.drawImage(img, startX, startY, minSide, minSide, 0, 0, size, size);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+          setStoredAvatar(dataUrl, userEmail);
+          setAvatarUrl(dataUrl);
+          setAvatarMessage("Photo avatar updated successfully");
+          setTimeout(() => setAvatarMessage(null), 2500);
+        }
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input value so same file can be re-selected if desired
+    e.target.value = "";
+  };
+
+  const handleRemovePhoto = () => {
+    setStoredAvatar(null, userEmail);
+    setAvatarUrl(null);
+    setAvatarMessage("Photo removed; initials restored");
+    setTimeout(() => setAvatarMessage(null), 2500);
+  };
+
   return (
     <>
       <motion.div
@@ -83,6 +143,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           transition={{ type: "spring", damping: 26, stiffness: 360 }}
           className="bg-[#121214] border border-[#232326] rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative overflow-hidden flex flex-col gap-5 text-white max-h-[90vh] overflow-y-auto"
         >
+          {/* Hidden File Input for Real Photo Uploads */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/png, image/jpeg, image/webp"
+            onChange={handlePhotoSelect}
+            className="hidden"
+          />
+
           {/* Header */}
           <div className="flex items-center justify-between pb-3.5 border-b border-[#232326]">
             <div className="flex items-center gap-3">
@@ -135,11 +204,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Tab 1: General & Profile */}
           {activeTab === "general" && (
             <div className="flex flex-col gap-4 py-1">
-              {/* Profile Card */}
+              {/* Profile Card with Real Photo Avatar */}
               <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-13 h-13 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-lg select-none flex-shrink-0">
-                    {username ? username.charAt(0).toUpperCase() : <User className="w-6 h-6 text-zinc-300" />}
+                  <div className="w-14 h-14 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-lg select-none flex-shrink-0 overflow-hidden">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="User Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : username ? (
+                      username.charAt(0).toUpperCase()
+                    ) : (
+                      <User className="w-6 h-6 text-zinc-300" />
+                    )}
                   </div>
 
                   <div className="flex flex-col min-w-0">
@@ -201,10 +280,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="text-xs font-mono text-zinc-400 mt-0.5 truncate">
                       {userEmail || "Local Hardware Enclave"}
                     </span>
+                    {avatarMessage && (
+                      <span className="text-[11px] font-mono text-zinc-300 mt-1">
+                        ✓ {avatarMessage}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto">
+                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                   {!isEditingUsername && (
                     <button
                       type="button"
@@ -215,14 +299,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span>Edit Username</span>
                     </button>
                   )}
+
                   <button
                     type="button"
-                    onClick={() => alert("Photo avatar storage configured for local enclave.")}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-semibold border border-zinc-700 transition-colors cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold transition-colors cursor-pointer shadow-sm"
                   >
-                    <Upload className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Upload Photo</span>
+                    <Upload className="w-3.5 h-3.5 text-black" />
+                    <span>{avatarUrl ? "Change Photo" : "Upload Photo"}</span>
                   </button>
+
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      title="Remove profile photo"
+                      className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-rose-400 border border-zinc-700 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 

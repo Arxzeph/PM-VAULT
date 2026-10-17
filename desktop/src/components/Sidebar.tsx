@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { VaultCategory } from "../types";
+import { getStoredAvatar, subscribeAvatarChange } from "../services/profile";
 import {
   Shield,
   KeyRound,
@@ -44,6 +45,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenGenerator,
   username,
 }) => {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getStoredAvatar());
+
+  useEffect(() => {
+    setAvatarUrl(getStoredAvatar());
+    const unsub = subscribeAvatarChange((newAvatar) => {
+      setAvatarUrl(newAvatar);
+    });
+    return unsub;
+  }, []);
+
   return (
     <aside className="w-60 flex-shrink-0 bg-[#000000] border-r border-[#232326] flex flex-col justify-between h-screen p-3.5 select-none relative z-20">
       {/* Top Header & Vault Selector */}
@@ -65,10 +76,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Active Vault Card / Selector */}
-        <div className="bg-[#121214] border border-[#232326] hover:border-zinc-700 rounded-xl p-2.5 flex items-center justify-between hover:bg-[#161618] transition-all cursor-pointer group">
+        <div
+          onClick={onOpenSettings}
+          className="bg-[#121214] border border-[#232326] hover:border-zinc-700 rounded-xl p-2.5 flex items-center justify-between hover:bg-[#161618] transition-all cursor-pointer group"
+        >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
-              <Lock className="w-3 h-3 text-zinc-400" />
+            <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 overflow-hidden flex-shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <Lock className="w-3 h-3 text-zinc-400" />
+              )}
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white font-sans">

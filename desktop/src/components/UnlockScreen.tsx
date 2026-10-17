@@ -37,6 +37,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
 
   // Switch menu state
   const [showSwitchMenu, setShowSwitchMenu] = useState(false);
+  const [infoDialog, setInfoDialog] = useState<{ title: string; message: string } | null>(null);
 
   // Connect / Sync existing vault from Supabase cloud
   const handleConnect = async (e: React.FormEvent) => {
@@ -486,7 +487,13 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
         <div className="flex items-center gap-4 text-xs font-sans text-zinc-500">
           <button
             type="button"
-            onClick={() => alert("Emergency Access Kit is available in Settings when unlocked.")}
+            onClick={() =>
+              setInfoDialog({
+                title: "Emergency Access Kit",
+                message:
+                  "Your Emergency Access Kit containing your recovery keys is generated locally and accessible under Vault Settings > Security once the enclave is unlocked.",
+              })
+            }
             className="hover:text-zinc-300 transition-colors cursor-pointer"
           >
             Emergency Access Kit
@@ -494,13 +501,52 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
           <span>•</span>
           <button
             type="button"
-            onClick={() => alert("For security, Master Passwords cannot be reset remotely without cloud keys or recovery codes.")}
+            onClick={() =>
+              setInfoDialog({
+                title: "Forgot Master Password?",
+                message:
+                  "Under Zero-Knowledge security, your master password cannot be reset remotely by any server. You will need your cloud account recovery verifier or emergency access kit to restore access.",
+              })
+            }
             className="hover:text-zinc-300 transition-colors cursor-pointer"
           >
             Forgot Master Password?
           </button>
         </div>
       </footer>
+
+      {/* In-app Info Dialog (Replaces browser alert) */}
+      <AnimatePresence>
+        {infoDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none"
+            onClick={() => setInfoDialog(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#121214] border border-[#232326] rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-4 text-white"
+            >
+              <h3 className="font-semibold text-sm text-white">{infoDialog.title}</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">{infoDialog.message}</p>
+              <div className="flex justify-end pt-2 border-t border-[#232326]">
+                <button
+                  type="button"
+                  onClick={() => setInfoDialog(null)}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                >
+                  Understood
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

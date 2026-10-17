@@ -1,6 +1,7 @@
 import { api } from "./api";
 
 const USERNAME_EVENT = "pm-vault-username-changed";
+const AVATAR_EVENT = "pm-vault-avatar-changed";
 
 export function formatDefaultUsername(email?: string | null): string {
   if (!email || !email.trim()) return "Vault Member";
@@ -94,5 +95,61 @@ export function subscribeUsernameChange(
   window.addEventListener(USERNAME_EVENT, handler);
   return () => {
     window.removeEventListener(USERNAME_EVENT, handler);
+  };
+}
+
+export function getStoredAvatar(userEmail?: string | null): string | null {
+  try {
+    if (userEmail) {
+      const emailSpecific = localStorage.getItem(`pm_vault_avatar_${userEmail}`);
+      if (emailSpecific) return emailSpecific;
+    }
+    return localStorage.getItem("pm_vault_avatar");
+  } catch (err) {
+    console.warn("[Profile] Failed to read avatar from localStorage:", err);
+    return null;
+  }
+}
+
+export function setStoredAvatar(
+  avatarDataUrl: string | null,
+  userEmail?: string | null
+): void {
+  try {
+    if (avatarDataUrl) {
+      if (userEmail) {
+        localStorage.setItem(`pm_vault_avatar_${userEmail}`, avatarDataUrl);
+      }
+      localStorage.setItem("pm_vault_avatar", avatarDataUrl);
+    } else {
+      if (userEmail) {
+        localStorage.removeItem(`pm_vault_avatar_${userEmail}`);
+      }
+      localStorage.removeItem("pm_vault_avatar");
+    }
+  } catch (err) {
+    console.warn("[Profile] Failed to save avatar to localStorage:", err);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(AVATAR_EVENT, { detail: avatarDataUrl })
+    );
+  }
+}
+
+export function subscribeAvatarChange(
+  callback: (newAvatar: string | null) => void
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const handler = (e: Event) => {
+    const custom = e as CustomEvent<string | null>;
+    callback(custom.detail);
+  };
+
+  window.addEventListener(AVATAR_EVENT, handler);
+  return () => {
+    window.removeEventListener(AVATAR_EVENT, handler);
   };
 }

@@ -460,11 +460,11 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                 child: Row(
                                   children: [
                                     Icon(Icons.auto_awesome_rounded,
-                                        color: Color(0xFF10B981), size: 14),
+                                        color: Colors.white, size: 14),
                                     SizedBox(width: 4),
                                     Text('Generate',
                                         style: TextStyle(
-                                            color: Color(0xFF10B981),
+                                            color: Colors.white,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600)),
                                   ],
@@ -500,7 +500,7 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                 if (_passwordController.text.isNotEmpty)
                                   IconButton(
                                     icon: const Icon(Icons.copy_rounded,
-                                        color: Color(0xFF10B981), size: 16),
+                                        color: Colors.white, size: 16),
                                     onPressed: () {
                                       Clipboard.setData(ClipboardData(
                                           text: _passwordController.text));
@@ -530,9 +530,9 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                 else if (strength == 2)
                                   c = const Color(0xFFF59E0B);
                                 else if (strength == 3)
-                                  c = const Color(0xFF3B82F6);
+                                  c = const Color(0xFFD4D4D8);
                                 else
-                                  c = const Color(0xFF10B981);
+                                  c = Colors.white;
                               }
                               return Expanded(
                                 child: Container(
@@ -570,10 +570,10 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                             TextButton.icon(
                               onPressed: _addQuestion,
                               icon: const Icon(Icons.add_rounded,
-                                  size: 14, color: Color(0xFF10B981)),
+                                  size: 14, color: Colors.white),
                               label: const Text('Add Question',
                                   style: TextStyle(
-                                      color: Color(0xFF10B981),
+                                      color: Colors.white,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600)),
                               style: TextButton.styleFrom(
@@ -753,7 +753,7 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                                   : Icons.copy_rounded,
                                               size: 14,
                                               color: isCopied
-                                                  ? const Color(0xFF10B981)
+                                                  ? Colors.white
                                                   : Colors.white70,
                                             ),
                                           ),
@@ -766,24 +766,22 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 8),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF10B981)
-                                                .withOpacity(0.12),
+                                            color: const Color(0xFF18181B),
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                             border: Border.all(
-                                                color: const Color(0xFF10B981)
-                                                    .withOpacity(0.3)),
+                                                color: const Color(0xFF27272A)),
                                           ),
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(Icons.auto_awesome_rounded,
-                                                  color: Color(0xFF10B981),
+                                                  color: Colors.white,
                                                   size: 12),
                                               SizedBox(width: 4),
                                               Text('Fake',
                                                   style: TextStyle(
-                                                      color: Color(0xFF10B981),
+                                                      color: Colors.white,
                                                       fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.bold)),
@@ -858,7 +856,7 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Icon(Icons.shield_outlined,
-                                  size: 16, color: Color(0xFF10B981)),
+                                  size: 16, color: Colors.black),
                               const SizedBox(width: 8),
                               Text(
                                 isCreating
@@ -911,7 +909,7 @@ class _EntryEditorDialogState extends State<EntryEditorDialog> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF10B981)),
+        borderSide: const BorderSide(color: Colors.white),
       ),
     );
   }

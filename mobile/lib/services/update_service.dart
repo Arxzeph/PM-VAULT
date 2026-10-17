@@ -179,7 +179,7 @@ class UpdateService {
                   style: TextStyle(color: Colors.white)),
             ],
           ),
-          backgroundColor: Color(0xFF1E293B),
+          backgroundColor: Color(0xFF18181B),
           duration: Duration(seconds: 2),
         ),
       );
@@ -196,13 +196,13 @@ class UpdateService {
             content: Row(
               children: [
                 Icon(Icons.check_circle_rounded,
-                    color: Color(0xFF10B981), size: 20),
+                    color: Colors.white, size: 20),
                 SizedBox(width: 12),
                 Text('PM Vault is up to date (V2.0.0)',
                     style: TextStyle(color: Colors.white)),
               ],
             ),
-            backgroundColor: Color(0xFF0F172A),
+            backgroundColor: Color(0xFF18181B),
             duration: Duration(seconds: 3),
           ),
         );
@@ -259,21 +259,21 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF131722),
+      backgroundColor: const Color(0xFF121214),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3), width: 1.2),
+        side: const BorderSide(color: Color(0xFF27272A), width: 1.2),
       ),
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.cyanAccent.withOpacity(0.12),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(Icons.system_update_rounded,
-                color: Colors.cyanAccent, size: 24),
+                color: Colors.white, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -294,14 +294,14 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
         children: [
           const Text(
             'A new version of PM Vault is available with enhanced security and improvements.',
-            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 13),
           ),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: const Color(0xFF18181B),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
@@ -310,7 +310,7 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
               child: Text(
                 widget.update.releaseNotes,
                 style: const TextStyle(
-                    color: Color(0xFFCBD5E1), fontSize: 12, height: 1.4),
+                    color: Color(0xFFE4E4E7), fontSize: 12, height: 1.4),
               ),
             ),
           ),
@@ -335,16 +335,16 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
                 value: _progress > 0 ? _progress : null,
-                backgroundColor: const Color(0xFF1E293B),
+                backgroundColor: const Color(0xFF18181B),
                 valueColor:
-                    const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                    const AlwaysStoppedAnimation<Color>(Colors.white),
                 minHeight: 8,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Downloading: ${(_progress * 100).toInt()}%',
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              style: const TextStyle(color: Color(0xFFA1A1AA), fontSize: 12),
             ),
           ],
         ],
@@ -354,12 +354,12 @@ class _UpdatePromptDialogState extends State<_UpdatePromptDialog> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child:
-                const Text('Later', style: TextStyle(color: Color(0xFF64748B))),
+                const Text('Later', style: TextStyle(color: Color(0xFF71717A))),
           ),
         ElevatedButton(
           onPressed: _isDownloading ? null : _startDownload,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.cyanAccent,
+            backgroundColor: Colors.white,
             foregroundColor: Colors.black,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

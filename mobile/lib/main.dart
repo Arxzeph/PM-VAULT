@@ -13,7 +13,7 @@ Future<void> main() async {
   try {
     await SupabaseService.initialize();
   } catch (e) {
-    print('Failed to initialize Supabase: $e');
+    debugPrint('Failed to initialize Supabase: $e');
   }
 
   runApp(
@@ -61,19 +61,21 @@ class _PMVaultAppState extends ConsumerState<PMVaultApp>
     final vault = ref.watch(vaultProvider);
 
     return MaterialApp(
-      title: 'PM Vault',
+      title: 'PM-VAULT',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF09090B),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF10B981),
-          secondary: Color(0xFF34D399),
-          surface: Color(0xFF121316),
+          primary: Colors.white,
+          onPrimary: Colors.black,
+          secondary: Color(0xFFA1A1AA),
+          surface: Color(0xFF121214),
           error: Color(0xFFF43F5E),
         ),
-        cardColor: const Color(0xFF121316),
-        dialogBackgroundColor: const Color(0xFF121316),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+        cardColor: const Color(0xFF121214),
+        dialogBackgroundColor: const Color(0xFF121214),
+        dividerColor: const Color(0xFF232326),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
       ),
       home: vault.isUnlocked ? const VaultView() : const UnlockScreen(),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../crypto/crypto_service.dart';
 
 class PasswordGeneratorSheet extends StatefulWidget {
@@ -41,14 +42,14 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
     if (_length < 12) return 'Weak';
     if (_length < 16) return 'Fair';
     if (_length < 24) return 'Strong';
-    return 'Very Strong';
+    return 'Cryptographic';
   }
 
   Color _getStrengthColor() {
     if (_length < 12) return const Color(0xFFF43F5E);
     if (_length < 16) return const Color(0xFFF59E0B);
-    if (_length < 24) return const Color(0xFF10B981);
-    return const Color(0xFF34D399);
+    if (_length < 24) return const Color(0xFFD4D4D8);
+    return Colors.white;
   }
 
   @override
@@ -56,7 +57,7 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: const BoxDecoration(
-        color: Color(0xFF121316),
+        color: Color(0xFF121214),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -74,17 +75,17 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF18181B),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(color: const Color(0xFF27272A)),
                     ),
                     alignment: Alignment.center,
                     child: const Icon(Icons.auto_awesome_rounded,
-                        color: Color(0xFF10B981), size: 16),
+                        color: Colors.white, size: 16),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Password Generator',
-                    style: TextStyle(
-                      fontSize: 15,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -93,7 +94,7 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded,
-                    color: Colors.white54, size: 20),
+                    color: Color(0xFF71717A), size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -113,24 +114,23 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                 Expanded(
                   child: SelectableText(
                     _generated,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
+                    style: GoogleFonts.ibmPlexMono(
                       fontSize: 14,
                       letterSpacing: 1.1,
-                      color: Color(0xFF10B981),
+                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded,
-                      color: Colors.white60, size: 18),
+                      color: Color(0xFFA1A1AA), size: 18),
                   onPressed: _regenerate,
                   tooltip: 'Regenerate',
                 ),
                 IconButton(
                   icon: const Icon(Icons.copy_rounded,
-                      color: Color(0xFF10B981), size: 18),
+                      color: Colors.white, size: 18),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _generated));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -152,12 +152,12 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Length',
-                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 13)),
               Row(
                 children: [
                   Text(
                     '$_length chars',
-                    style: const TextStyle(
+                    style: GoogleFonts.ibmPlexMono(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 13),
@@ -165,12 +165,11 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
                   const SizedBox(width: 8),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _getStrengthColor().withOpacity(0.15),
+                      color: const Color(0xFF18181B),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                          color: _getStrengthColor().withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFF27272A)),
                     ),
                     child: Text(
                       _getStrengthLabel(),
@@ -186,10 +185,10 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
           ),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xFF10B981),
+              activeTrackColor: Colors.white,
               inactiveTrackColor: const Color(0xFF27272A),
               thumbColor: Colors.white,
-              overlayColor: const Color(0xFF10B981).withOpacity(0.2),
+              overlayColor: Colors.white.withOpacity(0.1),
             ),
             child: Slider(
               value: _length.toDouble(),
@@ -262,7 +261,7 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF09090B),
+                foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
@@ -287,11 +286,11 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF0C0D10),
+          color: const Color(0xFF18181B),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: value
-                ? const Color(0xFF10B981).withOpacity(0.5)
+                ? Colors.white
                 : const Color(0xFF27272A),
           ),
         ),
@@ -302,7 +301,7 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: value ? Colors.white : Colors.white54,
+                  color: value ? Colors.white : const Color(0xFF71717A),
                   fontSize: 11,
                   fontWeight: value ? FontWeight.w600 : FontWeight.normal,
                 ),
@@ -312,7 +311,7 @@ class _PasswordGeneratorSheetState extends State<PasswordGeneratorSheet> {
               value
                   ? Icons.check_box_rounded
                   : Icons.check_box_outline_blank_rounded,
-              color: value ? const Color(0xFF10B981) : Colors.white30,
+              color: value ? Colors.white : const Color(0xFF52525B),
               size: 16,
             ),
           ],

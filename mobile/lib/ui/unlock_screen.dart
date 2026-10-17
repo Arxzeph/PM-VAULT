@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/vault_providers.dart';
 
 class UnlockScreen extends ConsumerStatefulWidget {
@@ -31,8 +32,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     try {
       final isSupported = await _auth.isDeviceSupported();
       final canCheck = await _auth.canCheckBiometrics;
-      if (mounted)
+      if (mounted) {
         setState(() => _canCheckBiometrics = isSupported && canCheck);
+      }
     } catch (_) {}
   }
 
@@ -63,7 +65,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     setState(() => _localError = null);
     try {
       final didAuth = await _auth.authenticate(
-        localizedReason: 'Scan fingerprint to unlock PM Vault',
+        localizedReason: 'Scan fingerprint to unlock PM-VAULT',
         options: const AuthenticationOptions(
           biometricOnly: true,
           stickyAuth: true,
@@ -100,9 +102,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       await ref.read(vaultProvider.notifier).loginOrInitVault(
             email: email,
             password: pwd,
-            manualSalt: _manualSaltController.text.trim().isEmpty
-                ? null
-                : _manualSaltController.text.trim(),
+            manualSalt: _manualSaltController.text.trim().isNotEmpty
+                ? _manualSaltController.text.trim()
+                : null,
           );
     } catch (e) {
       setState(() => _localError = e.toString().replaceAll('Exception: ', ''));
@@ -113,28 +115,37 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF121316),
+        backgroundColor: const Color(0xFF121214),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: Color(0xFF27272A)),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF232326)),
         ),
-        title: const Text('Reset Local Database?',
-            style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: Text(
+          'Reset Local Vault?',
+          style: GoogleFonts.spaceGrotesk(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
         content: const Text(
-          'DANGER: This will delete your local encrypted database from this phone. You can reconnect it if you know your Master Password.',
-          style: TextStyle(color: Colors.white70, fontSize: 13),
+          'This erases local cached database keys. Cloud sync identity can be reconnected with your credentials.',
+          style: TextStyle(color: Color(0xFFA1A1AA), fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child:
-                const Text('Cancel', style: TextStyle(color: Colors.white60)),
+                const Text('Cancel', style: TextStyle(color: Color(0xFF71717A))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF43F5E)),
+              backgroundColor: const Color(0xFFE11D48),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset', style: TextStyle(color: Colors.white)),
+            child: const Text('Reset', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -165,7 +176,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Lock Icon with Passkey / Biometric Badge
+                  // Lock Icon with Hardware Enclave Security Badge
                   Stack(
                     alignment: Alignment.bottomRight,
                     children: [
@@ -175,43 +186,41 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF18181B),
                           borderRadius: BorderRadius.circular(18),
-                          border:
-                              Border.all(color: Colors.white.withOpacity(0.08)),
-                          boxShadow: [
+                          border: Border.all(color: const Color(0xFF27272A)),
+                          boxShadow: const [
                             BoxShadow(
-                              color: const Color(0xFF10B981).withOpacity(0.12),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
+                              color: Colors.black45,
+                              blurRadius: 16,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(Icons.lock_rounded,
-                            color: Color(0xFF10B981), size: 28),
+                        child: const Icon(Icons.shield_outlined,
+                            color: Colors.white, size: 28),
                       ),
-                      // Passkey Badge
+                      // Biometric / Key Badge
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: const Color(0xFF09090B),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: const Color(0xFF10B981).withOpacity(0.5)),
+                          border: Border.all(color: const Color(0xFF3F3F46)),
                         ),
                         child: const Icon(Icons.fingerprint_rounded,
-                            color: Color(0xFF10B981), size: 14),
+                            color: Colors.white, size: 14),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
-                  // Title
+                  // Brand Header Title
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'PM Vault',
-                        style: TextStyle(
+                      Text(
+                        'PM-VAULT',
+                        style: GoogleFonts.spaceGrotesk(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -223,18 +232,16 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: const Color(0xFF10B981).withOpacity(0.25)),
+                          color: const Color(0xFF18181B),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF27272A)),
                         ),
-                        child: const Text(
-                          'Zero-Knowledge',
-                          style: TextStyle(
+                        child: Text(
+                          'v2.4',
+                          style: GoogleFonts.ibmPlexMono(
                             fontSize: 10,
-                            fontFamily: 'monospace',
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF10B981),
+                            color: const Color(0xFFD4D4D8),
                           ),
                         ),
                       ),
@@ -243,10 +250,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                   const SizedBox(height: 6),
                   Text(
                     isInit
-                        ? 'Vault locked · Enter master password'
-                        : 'Local-first encrypted password manager',
+                        ? 'ZERO-KNOWLEDGE HARDWARE ENCLAVE'
+                        : 'LOCAL-FIRST ENCRYPTED VAULT',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12, color: Colors.white54),
+                    style: GoogleFonts.ibmPlexMono(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF71717A),
+                      letterSpacing: 1.2,
+                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -257,14 +269,14 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF43F5E).withOpacity(0.12),
+                        color: const Color(0xFFE11D48).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: const Color(0xFFF43F5E).withOpacity(0.25)),
+                            color: const Color(0xFFE11D48).withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.shield_outlined,
+                          const Icon(Icons.warning_amber_rounded,
                               color: Color(0xFFF43F5E), size: 16),
                           const SizedBox(width: 8),
                           Expanded(
@@ -282,9 +294,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF121316),
+                      color: const Color(0xFF121214),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(color: const Color(0xFF232326)),
                     ),
                     child: isInit
                         ? _buildUnlockForm(vault)
@@ -293,20 +305,21 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Client-Side Crypto Security Footer
-                  const Row(
+                  // Cryptographic Telemetry Footer
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.shield_outlined,
-                          color: Color(0xFF10B981), size: 14),
-                      SizedBox(width: 6),
+                      const Icon(Icons.lock_outline_rounded,
+                          color: Color(0xFF71717A), size: 13),
+                      const SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          'Argon2id · XChaCha20-Poly1305 · SQLCipher',
-                          style: TextStyle(
-                              color: Colors.white38,
-                              fontSize: 10,
-                              fontFamily: 'monospace'),
+                          'ARGON2ID • CHACHA20-POLY1305 • SQLCIPHER',
+                          style: GoogleFonts.ibmPlexMono(
+                            color: const Color(0xFF71717A),
+                            fontSize: 10,
+                            letterSpacing: 0.8,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -329,22 +342,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFF0C0D10),
+              color: const Color(0xFF18181B),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFF27272A)),
             ),
             child: Row(
               children: [
                 const Icon(Icons.account_circle_outlined,
-                    color: Colors.white54, size: 16),
+                    color: Color(0xFFA1A1AA), size: 16),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     vault.email!,
-                    style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontFamily: 'monospace'),
+                    style: GoogleFonts.ibmPlexMono(
+                      color: const Color(0xFFE4E4E7),
+                      fontSize: 11,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -359,21 +372,21 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           controller: _passwordController,
           obscureText: _obscure,
           autofocus: true,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+          style: GoogleFonts.ibmPlexMono(
+              color: Colors.white, fontSize: 13),
           decoration: InputDecoration(
             hintText: 'Master Password',
             hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
             filled: true,
-            fillColor: const Color(0xFF0C0D10),
+            fillColor: const Color(0xFF18181B),
             prefixIcon:
-                const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
+                const Icon(Icons.key_rounded, color: Color(0xFF71717A), size: 16),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscure
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
-                color: Colors.white38,
+                color: const Color(0xFF71717A),
                 size: 16,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
@@ -390,22 +403,22 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF10B981)),
+              borderSide: const BorderSide(color: Colors.white),
             ),
           ),
           onFieldSubmitted: (_) => _handleUnlock(),
         ),
         const SizedBox(height: 16),
 
-        // Unlock Button
+        // Unlock Button (Solid Crisp White)
         SizedBox(
           height: 44,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF09090B),
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
             onPressed: vault.isLoading ? null : _handleUnlock,
@@ -433,13 +446,14 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: const BorderSide(color: Color(0xFF27272A)),
+                backgroundColor: const Color(0xFF18181B),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.fingerprint_rounded,
-                  color: Color(0xFF10B981), size: 18),
+                  color: Colors.white, size: 18),
               label: const Text('Unlock with Biometrics',
-                  style: TextStyle(fontSize: 12)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
               onPressed: _handleBiometricUnlock,
             ),
           ),
@@ -451,7 +465,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             onPressed: _handleResetVault,
             child: const Text(
               'Reset local vault database',
-              style: TextStyle(color: Colors.white38, fontSize: 11),
+              style: TextStyle(color: Color(0xFF71717A), fontSize: 11),
             ),
           ),
         ),
@@ -465,11 +479,11 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Mode Selector
+        // Mode Selector (Sliding Segmented Control)
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: const Color(0xFF0C0D10),
+            color: const Color(0xFF18181B),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFF27272A)),
           ),
@@ -483,7 +497,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
                       color: isConnect
-                          ? const Color(0xFF27272A)
+                          ? Colors.white
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
@@ -491,7 +505,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                     child: Text(
                       'Sync Existing',
                       style: TextStyle(
-                        color: isConnect ? Colors.white : Colors.white54,
+                        color: isConnect ? Colors.black : const Color(0xFFA1A1AA),
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -507,7 +521,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
                       color: !isConnect
-                          ? const Color(0xFF27272A)
+                          ? Colors.white
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
@@ -515,7 +529,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                     child: Text(
                       'Create New',
                       style: TextStyle(
-                        color: !isConnect ? Colors.white : Colors.white54,
+                        color: !isConnect ? Colors.black : const Color(0xFFA1A1AA),
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
@@ -537,9 +551,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             hintText: 'Account Email',
             hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
             filled: true,
-            fillColor: const Color(0xFF0C0D10),
+            fillColor: const Color(0xFF18181B),
             prefixIcon: const Icon(Icons.email_outlined,
-                color: Colors.white38, size: 16),
+                color: Color(0xFF71717A), size: 16),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
@@ -552,7 +566,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF10B981)),
+              borderSide: const BorderSide(color: Colors.white),
             ),
           ),
         ),
@@ -562,23 +576,23 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
         TextFormField(
           controller: _passwordController,
           obscureText: _obscure,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+          style: GoogleFonts.ibmPlexMono(
+              color: Colors.white, fontSize: 13),
           decoration: InputDecoration(
             hintText: isConnect
                 ? 'Master Password'
                 : 'Set Master Password (min 8 chars)',
             hintStyle: const TextStyle(color: Color(0xFF52525B), fontSize: 12),
             filled: true,
-            fillColor: const Color(0xFF0C0D10),
+            fillColor: const Color(0xFF18181B),
             prefixIcon:
-                const Icon(Icons.key_rounded, color: Colors.white38, size: 16),
+                const Icon(Icons.key_rounded, color: Color(0xFF71717A), size: 16),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscure
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
-                color: Colors.white38,
+                color: const Color(0xFF71717A),
                 size: 16,
               ),
               onPressed: () => setState(() => _obscure = !_obscure),
@@ -595,7 +609,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF10B981)),
+              borderSide: const BorderSide(color: Colors.white),
             ),
           ),
         ),
@@ -607,9 +621,9 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF09090B),
+              foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),
             onPressed: vault.isLoading ? null : _handleLoginOrInit,

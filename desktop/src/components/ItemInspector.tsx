@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { VaultEntry, VaultCategory } from "../types";
 import { copyWithAutoWipe } from "../services/clipboard";
 import { DecryptedText, ShinyText } from "./reactbits";
+import { ServiceIcon } from "./ServiceIcon";
 import {
-  KeyRound,
   Copy,
   Check,
   Eye,
@@ -17,7 +17,6 @@ import {
   Trash2,
   Archive,
   RefreshCw,
-  Globe,
   FileText,
   ShieldCheck,
   HelpCircle,
@@ -130,13 +129,12 @@ export const ItemInspector: React.FC<ItemInspectorProps> = ({
       {/* Top Inspector Header */}
       <header className="px-8 py-4 border-b border-[#232326] bg-[#09090B] flex items-center justify-between z-10">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-center flex-shrink-0 text-zinc-200 shadow-sm">
-            {entry.url ? (
-              <Globe className="w-5 h-5 text-zinc-200" />
-            ) : (
-              <KeyRound className="w-5 h-5 text-zinc-200" />
-            )}
-          </div>
+          <ServiceIcon
+            title={entry.title}
+            url={entry.url}
+            size={22}
+            className="w-10 h-10 rounded-xl"
+          />
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-base font-display font-bold text-white tracking-tight truncate">

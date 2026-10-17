@@ -4,12 +4,11 @@ import { VaultEntry, VaultCategory } from "../types";
 import {
   Search,
   Plus,
-  KeyRound,
   Lock,
   Star,
-  Globe,
   Trash2,
 } from "lucide-react";
+import { ServiceIcon } from "./ServiceIcon";
 
 interface ItemListProps {
   entries: VaultEntry[];
@@ -217,13 +216,12 @@ export const ItemList: React.FC<ItemListProps> = ({
                 {/* Top Row: Icon + Title + Fav/Badge */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-black border border-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-300">
-                      {entry.url ? (
-                        <Globe className="w-3.5 h-3.5 text-zinc-300" />
-                      ) : (
-                        <KeyRound className="w-3.5 h-3.5 text-zinc-300" />
-                      )}
-                    </div>
+                    <ServiceIcon
+                      title={entry.title}
+                      url={entry.url}
+                      size={16}
+                      className="w-7 h-7 rounded-lg"
+                    />
                     <span className="text-xs font-semibold text-white truncate font-sans">
                       {entry.title}
                     </span>

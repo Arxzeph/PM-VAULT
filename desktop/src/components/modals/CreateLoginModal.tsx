@@ -4,7 +4,6 @@ import { VaultEntry, SaveEntryInput } from "../../types";
 import { detectBrandFromInput, DetectedBrand } from "../../services/entryHelpers";
 import { api } from "../../services/api";
 import {
-  KeyRound,
   X,
   Lock,
   Eye,
@@ -14,6 +13,7 @@ import {
   Check,
   RefreshCw,
 } from "lucide-react";
+import { ServiceIcon } from "../ServiceIcon";
 
 interface CreateLoginModalProps {
   initialEntry?: VaultEntry | null;
@@ -134,9 +134,12 @@ export const CreateLoginModal: React.FC<CreateLoginModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-3.5 border-b border-[#232326]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-center text-zinc-200 shadow-sm">
-              <KeyRound className="w-5 h-5 text-zinc-200" />
-            </div>
+            <ServiceIcon
+              title={title}
+              url={url}
+              size={22}
+              className="w-10 h-10 rounded-xl"
+            />
             <div>
               <h2 className="text-base font-display font-bold text-white tracking-tight">
                 {initialEntry ? "Edit Password Entry" : "Create New Password"}
@@ -164,9 +167,12 @@ export const CreateLoginModal: React.FC<CreateLoginModalProps> = ({
                 Service / Website Name
               </label>
               {detectedBrand && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-medium">
-                  Detected: {detectedBrand.name}
-                </span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700">
+                  <ServiceIcon title={detectedBrand.name} url={detectedBrand.domain} size={12} className="w-3.5 h-3.5 rounded" />
+                  <span className="text-[10px] font-mono text-zinc-300 font-medium">
+                    {detectedBrand.name}
+                  </span>
+                </div>
               )}
             </div>
 

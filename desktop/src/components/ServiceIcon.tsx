@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { KeyRound } from "lucide-react";
 
 interface ServiceIconProps {
-  title?: string;
-  url?: string;
+  title?: string | null;
+  url?: string | null;
   className?: string;
   size?: number;
 }
 
-// Extract domain from url or service title
-function extractDomain(url?: string, title?: string): string | null {
+// Extract clean domain from url or service title
+export function extractDomain(url?: string | null, title?: string | null): string | null {
   if (url && url.trim()) {
     try {
       let clean = url.trim();
@@ -16,7 +17,10 @@ function extractDomain(url?: string, title?: string): string | null {
         clean = "https://" + clean;
       }
       const parsed = new URL(clean);
-      return parsed.hostname.replace(/^www\./, "");
+      let hostname = parsed.hostname.toLowerCase().replace(/^www\./, "");
+      if (hostname.length > 2 && hostname.includes(".")) {
+        return hostname;
+      }
     } catch {
       // ignore
     }
@@ -24,15 +28,24 @@ function extractDomain(url?: string, title?: string): string | null {
 
   if (title) {
     const t = title.toLowerCase().trim();
-    if (t.includes("google") || t.includes("gmail")) return "google.com";
+
+    // Check if title itself is a domain (e.g. "github.com", "amazon.in")
+    if (t.includes(".") && !t.includes(" ") && !t.startsWith(".") && !t.endsWith(".")) {
+      return t.replace(/^https?:\/\//, "").replace(/^www\./, "");
+    }
+
+    // Common services mapping
+    if (t.includes("google") || t.includes("gmail") || t.includes("drive")) return "google.com";
     if (t.includes("github")) return "github.com";
+    if (t.includes("gitlab")) return "gitlab.com";
+    if (t.includes("bitbucket")) return "bitbucket.org";
     if (t.includes("discord")) return "discord.com";
     if (t.includes("steam")) return "steampowered.com";
     if (t.includes("spotify")) return "spotify.com";
     if (t.includes("apple") || t.includes("icloud")) return "apple.com";
-    if (t.includes("microsoft") || t.includes("outlook") || t.includes("live.com")) return "microsoft.com";
+    if (t.includes("microsoft") || t.includes("outlook") || t.includes("live.com") || t.includes("office")) return "microsoft.com";
     if (t.includes("twitter") || t.includes(" x ") || t === "x") return "x.com";
-    if (t.includes("amazon")) return "amazon.com";
+    if (t.includes("amazon") || t.includes("aws")) return "amazon.com";
     if (t.includes("netflix")) return "netflix.com";
     if (t.includes("reddit")) return "reddit.com";
     if (t.includes("youtube")) return "youtube.com";
@@ -46,6 +59,30 @@ function extractDomain(url?: string, title?: string): string | null {
     if (t.includes("instagram")) return "instagram.com";
     if (t.includes("linkedin")) return "linkedin.com";
     if (t.includes("paypal")) return "paypal.com";
+    if (t.includes("stripe")) return "stripe.com";
+    if (t.includes("cloudflare")) return "cloudflare.com";
+    if (t.includes("vercel")) return "vercel.com";
+    if (t.includes("supabase")) return "supabase.com";
+    if (t.includes("digitalocean")) return "digitalocean.com";
+    if (t.includes("docker")) return "docker.com";
+    if (t.includes("slack")) return "slack.com";
+    if (t.includes("zoom")) return "zoom.us";
+    if (t.includes("dropbox")) return "dropbox.com";
+    if (t.includes("figma")) return "figma.com";
+    if (t.includes("adobe")) return "adobe.com";
+    if (t.includes("linear")) return "linear.app";
+    if (t.includes("coinbase")) return "coinbase.com";
+    if (t.includes("binance")) return "binance.com";
+    if (t.includes("kraken")) return "kraken.com";
+    if (t.includes("epic games") || t.includes("epicgames")) return "epicgames.com";
+    if (t.includes("riot") || t.includes("valorant") || t.includes("league of legends")) return "riotgames.com";
+    if (t.includes("playstation") || t.includes("sony")) return "playstation.com";
+    if (t.includes("xbox")) return "xbox.com";
+    if (t.includes("wikipedia")) return "wikipedia.org";
+    if (t.includes("pinterest")) return "pinterest.com";
+    if (t.includes("tiktok")) return "tiktok.com";
+    if (t.includes("whatsapp")) return "whatsapp.com";
+    if (t.includes("signal")) return "signal.org";
   }
 
   return null;
@@ -55,39 +92,45 @@ export const ServiceIcon: React.FC<ServiceIconProps> = ({
   title = "",
   url = "",
   className = "",
-  size = 20,
+  size = 18,
 }) => {
   const [imgError, setImgError] = useState(false);
+  const [useFallbackService, setUseFallbackService] = useState(false);
   const domain = extractDomain(url, title);
-  const initial = title.trim() ? title.trim()[0].toUpperCase() : "?";
+  const cleanTitle = (title || "").trim();
+  const initial = cleanTitle ? cleanTitle[0].toUpperCase() : null;
 
-  // Monogram color generation based on title character
-  const getGradient = (char: string) => {
-    const gradients = [
-      "from-blue-600/30 to-indigo-600/30 text-blue-300 border-blue-500/20",
-      "from-sky-600/30 to-indigo-600/30 text-sky-300 border-sky-500/20",
-      "from-violet-600/30 to-purple-600/30 text-violet-300 border-violet-500/20",
-      "from-amber-600/30 to-orange-600/30 text-amber-300 border-amber-500/20",
-      "from-rose-600/30 to-pink-600/30 text-rose-300 border-rose-500/20",
-      "from-cyan-600/30 to-sky-600/30 text-cyan-300 border-cyan-500/20",
-    ];
-    const code = char.charCodeAt(0) || 0;
-    return gradients[code % gradients.length];
+  // Reset error states whenever domain changes
+  useEffect(() => {
+    setImgError(false);
+    setUseFallbackService(false);
+  }, [domain]);
+
+  const handleImageError = () => {
+    if (!useFallbackService && domain) {
+      setUseFallbackService(true);
+    } else {
+      setImgError(true);
+    }
   };
 
-  // If we have a domain and favicon didn't error, render high-res Google favicon
-  if (domain && !imgError) {
-    const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  const faviconUrl = domain
+    ? useFallbackService
+      ? `https://icons.duckduckgo.com/ip3/${domain}.ico`
+      : `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+    : null;
+
+  // If we have a domain and haven't errored out, render high-res website favicon
+  if (faviconUrl && !imgError) {
     return (
       <div
-        className={`relative flex items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800/80 overflow-hidden shadow-sm shrink-0 ${className}`}
-        style={{ width: size + 16, height: size + 16 }}
+        className={`relative flex items-center justify-center bg-[#141416] border border-[#27272A] overflow-hidden shadow-sm shrink-0 ${className}`}
       >
         <img
           src={faviconUrl}
-          alt={title || domain}
-          onError={() => setImgError(true)}
-          className="object-contain rounded-md"
+          alt={title || domain || "Service"}
+          onError={handleImageError}
+          className="object-contain rounded-[4px]"
           style={{ width: size, height: size }}
           loading="lazy"
         />
@@ -95,15 +138,18 @@ export const ServiceIcon: React.FC<ServiceIconProps> = ({
     );
   }
 
-  // Linear / Raycast Style Monogram Fallback
+  // Clean unslop obsidian monogram fallback
   return (
     <div
-      className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br border font-medium font-mono text-xs shadow-sm shrink-0 ${getGradient(
-        initial
-      )} ${className}`}
-      style={{ width: size + 16, height: size + 16 }}
+      className={`relative flex items-center justify-center bg-[#141416] border border-[#27272A] text-zinc-300 font-mono font-bold shadow-sm shrink-0 select-none ${className}`}
     >
-      <span>{initial}</span>
+      {initial ? (
+        <span style={{ fontSize: Math.max(10, size * 0.75) }}>{initial}</span>
+      ) : (
+        <KeyRound className="text-zinc-500" style={{ width: size * 0.8, height: size * 0.8 }} />
+      )}
     </div>
   );
 };
+
+export default ServiceIcon;

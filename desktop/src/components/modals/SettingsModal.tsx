@@ -12,6 +12,11 @@ import {
   Edit3,
   Check,
   Trash2,
+  ShieldCheck,
+  Cpu,
+  Lock,
+  ShieldAlert,
+  Fingerprint,
 } from "lucide-react";
 import { PurgeConfirmModal } from "./PurgeConfirmModal";
 import {
@@ -29,13 +34,28 @@ interface SettingsModalProps {
   onPurgeAccount: () => Promise<void>;
 }
 
+interface TabItem {
+  id: "general" | "security" | "master_key" | "danger";
+  label: string;
+  isDanger?: boolean;
+}
+
+const TABS: TabItem[] = [
+  { id: "general", label: "General & Identity" },
+  { id: "security", label: "Security & Enclave" },
+  { id: "master_key", label: "Master Password" },
+  { id: "danger", label: "Danger Zone", isDanger: true },
+];
+
+type TabId = TabItem["id"];
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   userEmail,
   onClose,
   onOpenChangePassword,
   onPurgeAccount,
 }) => {
-  const [activeTab, setActiveTab] = useState<"general" | "security" | "master_key" | "danger">("general");
+  const [activeTab, setActiveTab] = useState<TabId>("general");
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [username, setUsername] = useState<string>(() => getStoredUsername(userEmail));
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getStoredAvatar(userEmail));
@@ -141,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ type: "spring", damping: 26, stiffness: 360 }}
-          className="bg-[#121214] border border-[#232326] rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative overflow-hidden flex flex-col gap-5 text-white max-h-[90vh] overflow-y-auto"
+          className="bg-[#121214] border border-[#232326] rounded-2xl shadow-2xl max-w-2xl w-full h-[580px] p-6 relative overflow-hidden flex flex-col justify-between text-white"
         >
           {/* Hidden File Input for Real Photo Uploads */}
           <input
@@ -153,7 +173,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           />
 
           {/* Header */}
-          <div className="flex items-center justify-between pb-3.5 border-b border-[#232326]">
+          <div className="flex items-center justify-between pb-3.5 border-b border-[#232326] flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-center text-zinc-200">
                 <Settings className="w-5 h-5" />
@@ -174,314 +194,417 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-1.5 border-b border-[#232326] pb-2">
-            {[
-              { id: "general", label: "General & Identity" },
-              { id: "security", label: "Security & Enclave" },
-              { id: "master_key", label: "Master Password" },
-              { id: "danger", label: "Danger Zone", isDanger: true },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  activeTab === tab.id
-                    ? tab.isDanger
-                      ? "bg-rose-600/20 text-rose-300 border border-rose-500/40"
-                      : "bg-white text-black shadow-sm"
-                    : tab.isDanger
-                    ? "text-rose-400 hover:text-rose-300 hover:bg-rose-950/20"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Navigation Tabs with Spring Sliding Pill Indicator */}
+          <div className="flex items-center gap-1.5 border-b border-[#232326] pb-2 relative flex-shrink-0">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer select-none ${
+                    isActive
+                      ? tab.isDanger
+                        ? "text-rose-300"
+                        : "text-black"
+                      : tab.isDanger
+                      ? "text-rose-400 hover:text-rose-300 hover:bg-rose-950/20"
+                      : "text-zinc-400 hover:text-white hover:bg-zinc-800/40"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeSettingsTabPill"
+                      className={`absolute inset-0 rounded-lg ${
+                        tab.isDanger
+                          ? "bg-rose-600/20 border border-rose-500/40"
+                          : "bg-white shadow-sm"
+                      }`}
+                      transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Tab 1: General & Profile */}
-          {activeTab === "general" && (
-            <div className="flex flex-col gap-4 py-1">
-              {/* Profile Card with Real Photo Avatar */}
-              <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-14 h-14 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-lg select-none flex-shrink-0 overflow-hidden">
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt="User Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : username ? (
-                      username.charAt(0).toUpperCase()
-                    ) : (
-                      <User className="w-6 h-6 text-zinc-300" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col min-w-0">
-                    {isEditingUsername ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          autoFocus
-                          value={tempUsername}
-                          onChange={(e) => setTempUsername(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveUsername();
-                            if (e.key === "Escape") handleCancelEdit();
-                          }}
-                          placeholder="Enter username"
-                          maxLength={32}
-                          className="bg-[#121214] border border-zinc-600 text-white text-sm font-semibold rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400 font-sans"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleSaveUsername()}
-                          title="Save Username"
-                          className="p-1.5 rounded-lg bg-white hover:bg-zinc-200 text-black transition-colors cursor-pointer"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCancelEdit}
-                          title="Cancel"
-                          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+          {/* Tab Content Viewport - Unified Single Size with Smooth Transitions */}
+          <div className="flex-1 overflow-y-auto pr-1 my-1 min-h-0">
+            <AnimatePresence mode="wait" initial={false}>
+              {/* Tab 1: General & Profile */}
+              {activeTab === "general" && (
+                <motion.div
+                  key="general"
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="flex flex-col gap-4 py-1"
+                >
+                  {/* Profile Card with Real Photo Avatar */}
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="w-14 h-14 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-lg select-none flex-shrink-0 overflow-hidden">
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt="User Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : username ? (
+                          username.charAt(0).toUpperCase()
+                        ) : (
+                          <User className="w-6 h-6 text-zinc-300" />
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-base text-white truncate max-w-[200px]">
-                          {username}
+
+                      <div className="flex flex-col min-w-0">
+                        {isEditingUsername ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={tempUsername}
+                              onChange={(e) => setTempUsername(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveUsername();
+                                if (e.key === "Escape") handleCancelEdit();
+                              }}
+                              placeholder="Enter username"
+                              maxLength={32}
+                              className="bg-[#121214] border border-zinc-600 text-white text-sm font-semibold rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400 font-sans"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveUsername()}
+                              title="Save Username"
+                              className="p-1.5 rounded-lg bg-white hover:bg-zinc-200 text-black transition-colors cursor-pointer"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              title="Cancel"
+                              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-base text-white truncate max-w-[200px]">
+                              {username}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleStartEdit}
+                              title="Edit Username"
+                              className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700 font-semibold whitespace-nowrap">
+                              • Verified Enclave
+                            </span>
+                            {saveSuccess && (
+                              <span className="text-[10px] font-mono text-zinc-300 font-semibold">
+                                ✓ Saved
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <span className="text-xs font-mono text-zinc-400 mt-0.5 truncate">
+                          {userEmail || "Local Hardware Enclave"}
                         </span>
-                        <button
-                          type="button"
-                          onClick={handleStartEdit}
-                          title="Edit Username"
-                          className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700 font-semibold whitespace-nowrap">
-                          • Verified Enclave
-                        </span>
-                        {saveSuccess && (
-                          <span className="text-[10px] font-mono text-zinc-300 font-semibold">
-                            ✓ Saved
+                        {avatarMessage && (
+                          <span className="text-[11px] font-mono text-zinc-300 mt-1">
+                            ✓ {avatarMessage}
                           </span>
                         )}
                       </div>
-                    )}
-                    <span className="text-xs font-mono text-zinc-400 mt-0.5 truncate">
-                      {userEmail || "Local Hardware Enclave"}
-                    </span>
-                    {avatarMessage && (
-                      <span className="text-[11px] font-mono text-zinc-300 mt-1">
-                        ✓ {avatarMessage}
+                    </div>
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                      {!isEditingUsername && (
+                        <button
+                          type="button"
+                          onClick={handleStartEdit}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-semibold border border-zinc-700 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-zinc-300" />
+                          <span>Edit Username</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-black" />
+                        <span>{avatarUrl ? "Change Photo" : "Upload Photo"}</span>
+                      </button>
+
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          title="Remove profile photo"
+                          className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-rose-400 border border-zinc-700 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Set Username Form Card */}
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-zinc-300" />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                          Vault Username & Identity
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        Custom identity display name
                       </span>
-                    )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={tempUsername !== "" ? tempUsername : isEditingUsername ? "" : username}
+                          onChange={(e) => setTempUsername(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && tempUsername.trim() && tempUsername.trim() !== username) {
+                              handleSaveUsername(tempUsername);
+                            }
+                          }}
+                          placeholder="Enter custom username"
+                          maxLength={32}
+                          className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-sans"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveUsername(tempUsername)}
+                        disabled={!tempUsername.trim() || tempUsername.trim() === username}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          tempUsername.trim() && tempUsername.trim() !== username
+                            ? "bg-white hover:bg-zinc-200 text-black shadow-sm"
+                            : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/50"
+                        }`}
+                      >
+                        Set Username
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                  {!isEditingUsername && (
-                    <button
-                      type="button"
-                      onClick={handleStartEdit}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-semibold border border-zinc-700 transition-colors cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5 text-zinc-300" />
-                      <span>Edit Username</span>
-                    </button>
-                  )}
+                  {/* Hardware & Enclave Spec Strip */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-3.5 flex flex-col gap-1">
+                      <span className="text-[10px] font-mono text-zinc-500">HARDWARE ENCLAVE</span>
+                      <span className="text-xs font-bold text-white font-mono mt-0.5">
+                        TPM 2.0 Module Active
+                      </span>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold transition-colors cursor-pointer shadow-sm"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-black" />
-                    <span>{avatarUrl ? "Change Photo" : "Upload Photo"}</span>
-                  </button>
-
-                  {avatarUrl && (
-                    <button
-                      type="button"
-                      onClick={handleRemovePhoto}
-                      title="Remove profile photo"
-                      className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-rose-400 border border-zinc-700 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Set Username Form Card */}
-              <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-zinc-300" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                      Vault Username & Identity
-                    </span>
+                    <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-3.5 flex flex-col gap-1">
+                      <span className="text-[10px] font-mono text-zinc-500">CRYPTOGRAPHIC ALGORITHM</span>
+                      <span className="text-xs font-bold text-white font-mono mt-0.5">
+                        ChaCha20-Poly1305 + Argon2id
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-500">
-                    Custom identity display name
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={tempUsername !== "" ? tempUsername : isEditingUsername ? "" : username}
-                      onChange={(e) => setTempUsername(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && tempUsername.trim() && tempUsername.trim() !== username) {
-                          handleSaveUsername(tempUsername);
-                        }
-                      }}
-                      placeholder="Enter custom username"
-                      maxLength={32}
-                      className="w-full bg-[#121214] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-sans"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSaveUsername(tempUsername)}
-                    disabled={!tempUsername.trim() || tempUsername.trim() === username}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      tempUsername.trim() && tempUsername.trim() !== username
-                        ? "bg-white hover:bg-zinc-200 text-black shadow-sm"
-                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/50"
-                    }`}
-                  >
-                    Set Username
-                  </button>
-                </div>
-              </div>
+                </motion.div>
+              )}
 
-              {/* Hardware & Enclave Spec Strip */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-3.5 flex flex-col gap-1">
-                  <span className="text-[10px] font-mono text-zinc-500">HARDWARE ENCLAVE</span>
-                  <span className="text-xs font-bold text-white font-mono mt-0.5">
-                    TPM 2.0 Module Active
-                  </span>
-                </div>
-
-                <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-3.5 flex flex-col gap-1">
-                  <span className="text-[10px] font-mono text-zinc-500">CRYPTOGRAPHIC ALGORITHM</span>
-                  <span className="text-xs font-bold text-white font-mono mt-0.5">
-                    ChaCha20-Poly1305 + Argon2id
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: Security & Enclave */}
-          {activeTab === "security" && (
-            <div className="flex flex-col gap-4 py-1">
-              <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-zinc-300" />
-                  <div>
-                    <span className="text-xs font-bold text-white">Auto-Lock Inactivity Timeout</span>
-                    <p className="text-[11px] text-zinc-400">
-                      Locks memory vault after 5 minutes of inactivity on this device.
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200">
-                  5 Minutes
-                </span>
-              </div>
-
-              <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Laptop className="w-5 h-5 text-zinc-300" />
-                  <div>
-                    <span className="text-xs font-bold text-white">Smart Clipboard Auto-Clear</span>
-                    <p className="text-[11px] text-zinc-400">
-                      Automatically shreds copied passwords from system memory after 30 seconds.
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200">
-                  30 Seconds
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Master Key */}
-          {activeTab === "master_key" && (
-            <div className="flex flex-col gap-4 py-1">
-              <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <KeyRound className="w-5 h-5 text-zinc-300" />
-                  <div>
-                    <span className="text-xs font-bold text-white">Change Master Password</span>
-                    <p className="text-[11px] text-zinc-400">
-                      Re-encrypts all vault DEKs with a new Argon2id key and updates cloud verifier.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenChangePassword();
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              {/* Tab 2: Security & Enclave */}
+              {activeTab === "security" && (
+                <motion.div
+                  key="security"
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="flex flex-col gap-3 py-1"
                 >
-                  Change Password
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 4: Danger Zone */}
-          {activeTab === "danger" && (
-            <div className="flex flex-col gap-4 py-1">
-              <div className="bg-rose-950/20 border border-rose-900/50 rounded-2xl p-5 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-500" />
-                    <span className="text-xs font-mono font-bold tracking-wider text-rose-300 uppercase">
-                      DANGER ZONE • ACCOUNT & ENCLAVE PURGE
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-zinc-300" />
+                      <div>
+                        <span className="text-xs font-bold text-white">Auto-Lock Inactivity Timeout</span>
+                        <p className="text-[11px] text-zinc-400">
+                          Locks memory vault after 5 minutes of inactivity on this device.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200">
+                      5 Minutes
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40 uppercase font-semibold">
-                    IRREVERSIBLE
-                  </span>
-                </div>
 
-                <p className="text-xs text-zinc-300 leading-relaxed">
-                  Permanently wipe local cryptographic keys, destroy vault blobs, and delete cloud sync identity. This action cannot be undone. All offline data on this machine will be wiped.
-                </p>
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Laptop className="w-5 h-5 text-zinc-300" />
+                      <div>
+                        <span className="text-xs font-bold text-white">Smart Clipboard Auto-Clear</span>
+                        <p className="text-[11px] text-zinc-400">
+                          Automatically shreds copied passwords from system memory after 30 seconds.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200">
+                      30 Seconds
+                    </span>
+                  </div>
 
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowPurgeModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-lg shadow-rose-950/50 border border-rose-500/50 transition-all cursor-pointer"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>Delete Account & Purge Vault</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Cpu className="w-5 h-5 text-zinc-300" />
+                      <div>
+                        <span className="text-xs font-bold text-white">Cryptographic Isolation & Zeroing</span>
+                        <p className="text-[11px] text-zinc-400">
+                          Volatile memory is zeroed upon vault locking or sleep. No plain keys survive in RAM.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold">
+                      HEAP_SANITIZED
+                    </span>
+                  </div>
+
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-3.5 flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-zinc-400" />
+                      <span>ARGON2ID: 64MB RAM • 3 ITERATIONS • 4 PARALLEL THREADS</span>
+                    </div>
+                    <span className="text-zinc-500">HARDWARE ACCELERATED</span>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Tab 3: Master Key */}
+              {activeTab === "master_key" && (
+                <motion.div
+                  key="master_key"
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="flex flex-col gap-3.5 py-1"
+                >
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <KeyRound className="w-5 h-5 text-zinc-300" />
+                      <div>
+                        <span className="text-xs font-bold text-white">Change Master Password</span>
+                        <p className="text-[11px] text-zinc-400">
+                          Re-encrypts all vault DEKs with a new Argon2id key and updates cloud verifier.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenChangePassword();
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-zinc-400" />
+                      <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                        Key Derivation Protocol (KEK & DEK)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      Your master password is never stored locally or transmitted to servers. It derives a 256-bit Key Encryption Key (KEK) using Argon2id. When updated, Data Encryption Keys (DEKs) are decrypted in volatile enclave memory and re-wrapped under the new KEK before cloud synchronization.
+                    </p>
+                  </div>
+
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Fingerprint className="w-4 h-4 text-zinc-400" />
+                      <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                        Enclave Security Recommendations
+                      </span>
+                    </div>
+                    <ul className="text-[11px] text-zinc-400 space-y-1 list-disc list-inside">
+                      <li>Minimum 12 characters with mixed case, digits, and punctuation</li>
+                      <li>Memory-hardened parameters defeat offline GPU and ASIC attacks</li>
+                      <li>Zero-knowledge: No recovery possible without password or Emergency Kit</li>
+                    </ul>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Tab 4: Danger Zone */}
+              {activeTab === "danger" && (
+                <motion.div
+                  key="danger"
+                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="flex flex-col gap-3 py-1"
+                >
+                  <div className="bg-rose-950/20 border border-rose-900/50 rounded-2xl p-5 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-500" />
+                        <span className="text-xs font-mono font-bold tracking-wider text-rose-300 uppercase">
+                          DANGER ZONE • ACCOUNT & ENCLAVE PURGE
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40 uppercase font-semibold">
+                        IRREVERSIBLE
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      Permanently wipe local cryptographic keys, destroy vault blobs, and delete cloud sync identity. This action cannot be undone. All offline data on this machine will be wiped.
+                    </p>
+
+                    <div className="bg-[#121214] border border-rose-900/40 rounded-xl p-3 text-[11px] font-mono text-zinc-400 space-y-1">
+                      <div className="text-rose-400 font-semibold mb-1">Items that will be destroyed:</div>
+                      <div>• Local encrypted SQLite vault database (pm_vault.db)</div>
+                      <div>• Hardware enclave salt and local cryptographic verifiers</div>
+                      <div>• Remote zero-knowledge sync backup and device pairs</div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowPurgeModal(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-lg shadow-rose-950/50 border border-rose-500/50 transition-all cursor-pointer"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span>Delete Account & Purge Vault</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#18181B] border border-[#27272A] rounded-xl p-3 flex items-center gap-2.5 text-[11px] font-mono text-zinc-500">
+                    <ShieldAlert className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                    <span>Cryptographic key purge is permanent. Data recovery is mathematically impossible.</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-3.5 border-t border-[#232326] mt-2">
+          <div className="flex items-center justify-between pt-3.5 border-t border-[#232326] flex-shrink-0">
             <span className="text-[11px] font-mono text-zinc-500">
               • Hardware Security Module Attached
             </span>

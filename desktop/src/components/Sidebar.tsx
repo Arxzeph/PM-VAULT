@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { VaultCategory } from "../types";
 import { getStoredAvatar, subscribeAvatarChange } from "../services/profile";
+import { ShinyText } from "./reactbits";
 import {
   Shield,
   KeyRound,
@@ -227,7 +228,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="bg-[#121214] border border-[#232326] rounded-lg px-2.5 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-            <span className="text-[11px] font-medium text-zinc-300 font-sans">E2E Encrypted</span>
+            <ShinyText
+              text="E2E Encrypted"
+              color="#d4d4d8"
+              shineColor="#ffffff"
+              speed={5}
+              delay={3}
+              className="text-[11px] font-medium font-sans"
+            />
           </div>
           <span className="text-[10px] font-mono text-zinc-400">
             {syncStatus === "syncing" ? "Syncing..." : syncStatus === "offline" ? "Offline" : "Synced"}

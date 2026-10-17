@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "../services/api";
 import { supabaseService } from "../services/supabase";
+import { ShinyText, BlurText } from "./reactbits";
 import {
   Lock,
   Eye,
@@ -210,7 +211,13 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
         <div className="flex items-center gap-4 text-zinc-500 font-mono">
           <span>ARGON2ID-CHACHA20-POLY1305</span>
           <span className="text-zinc-700">•</span>
-          <span className="text-zinc-300">ZERO-KNOWLEDGE STRICT</span>
+          <ShinyText
+            text="ZERO-KNOWLEDGE STRICT"
+            color="#a1a1aa"
+            shineColor="#ffffff"
+            speed={4}
+            delay={2}
+          />
         </div>
       </header>
 
@@ -229,9 +236,15 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                 <Shield className="w-7 h-7 text-white" />
               </div>
 
-              <div className="flex flex-col">
+              <div className="flex flex-col items-center">
                 <div className="flex items-center justify-center gap-2">
-                  <h1 className="text-xl font-display font-bold tracking-tight text-white">PM-VAULT</h1>
+                  <BlurText
+                    text="PM-VAULT"
+                    delay={45}
+                    animateBy="letters"
+                    direction="top"
+                    className="text-xl font-display font-bold tracking-tight text-white justify-center"
+                  />
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-semibold">
                     v2.4
                   </span>

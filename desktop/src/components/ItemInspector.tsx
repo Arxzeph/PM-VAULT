@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { VaultEntry, VaultCategory } from "../types";
 import { copyWithAutoWipe } from "../services/clipboard";
-import { DecryptedText } from "./reactbits/DecryptedText";
+import { DecryptedText, ShinyText } from "./reactbits";
 import {
   KeyRound,
   Copy,
@@ -273,7 +273,13 @@ export const ItemInspector: React.FC<ItemInspectorProps> = ({
             </span>
             <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-400">
               <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
-              <span>ChaCha20-Poly1305</span>
+              <ShinyText
+                text="ChaCha20-Poly1305"
+                color="#a1a1aa"
+                shineColor="#ffffff"
+                speed={4}
+                delay={2}
+              />
             </div>
           </div>
 
@@ -443,7 +449,14 @@ export const ItemInspector: React.FC<ItemInspectorProps> = ({
             <span>REVISION: v{entry.revision || 1} • ZERO-KNOWLEDGE SEALED</span>
           </div>
           <div className="text-right flex flex-col gap-0.5">
-            <span className="text-zinc-400 font-semibold">ARGON2ID + CHACHA20</span>
+            <ShinyText
+              text="ARGON2ID + CHACHA20"
+              color="#a1a1aa"
+              shineColor="#ffffff"
+              speed={4.5}
+              delay={3}
+              className="font-semibold"
+            />
             <span>STATUS: {entry.sync_status || "LOCAL_ENCLAVE"}</span>
           </div>
         </div>

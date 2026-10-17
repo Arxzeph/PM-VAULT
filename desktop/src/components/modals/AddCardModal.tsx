@@ -96,140 +96,125 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.14 }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D0F17]/85 backdrop-blur-md select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm select-none"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 12 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ type: "spring", damping: 26, stiffness: 360 }}
-        className="bg-[#161B26] border border-slate-700/70 rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative overflow-hidden flex flex-col gap-5 text-white max-h-[92vh] overflow-y-auto"
+        className="bg-[#121214] border border-[#232326] rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative overflow-hidden flex flex-col gap-5 text-white max-h-[92vh] overflow-y-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#242B3D]">
+        <div className="flex items-center justify-between pb-3.5 border-b border-[#232326]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#38BDF8]/15 border border-[#38BDF8]/30 flex items-center justify-center text-[#38BDF8]">
+            <div className="w-9 h-9 rounded-xl bg-[#18181B] border border-[#27272A] flex items-center justify-center text-zinc-200">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white">+ Add Payment Card</h2>
-              <span className="text-xs font-mono text-slate-400">
-                Client-side encrypted with AES-256-GCM. Never stored plaintext.
+              <span className="text-xs font-mono text-zinc-500">
+                Client-side encrypted with ChaCha20-Poly1305. Never stored plaintext.
               </span>
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
-          </motion.button>
+          </button>
         </div>
 
         {/* Live Interactive Digital Card Preview */}
-        <motion.div
-          layout
-          transition={{ duration: 0.25 }}
-          whileHover={{ y: -2, scale: 1.01 }}
-          className="bg-gradient-to-tr from-slate-900 via-[#1A1F2E] to-[#252B3B] border border-indigo-500/30 rounded-2xl p-5 shadow-2xl relative overflow-hidden flex flex-col justify-between h-52 select-none"
-        >
+        <div className="bg-[#18181B] border border-[#27272A] rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between h-52 select-none">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-7 rounded-md bg-amber-400/80 border border-amber-300 flex items-center justify-center relative overflow-hidden">
                 <div className="w-full h-[1px] bg-amber-600/60 my-auto" />
                 <div className="w-[1px] h-full bg-amber-600/60 mx-auto" />
               </div>
-              <span className="text-slate-400 text-xs font-mono">((( )))</span>
+              <span className="text-zinc-500 text-xs font-mono">((( )))</span>
             </div>
-            <span className="text-sm font-mono font-bold tracking-widest text-white uppercase">
+            <span className="text-sm font-mono font-bold tracking-widest text-zinc-200 uppercase">
               {brand.toUpperCase()}
             </span>
           </div>
 
           <div className="my-auto">
-            <span className="font-mono text-xl font-bold tracking-widest text-white drop-shadow">
+            <span className="font-mono text-xl font-bold tracking-widest text-white">
               {cardNumber || "••••  ••••  ••••  8821"}
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-xs font-mono text-slate-300">
+          <div className="flex items-center justify-between text-xs font-mono text-zinc-400 uppercase">
             <div className="flex flex-col">
-              <span className="text-[9px] text-slate-400 tracking-wider">CARDHOLDER</span>
-              <span className="font-bold tracking-wide text-white uppercase">
-                {cardholderName || "CARDHOLDER NAME"}
+              <span className="text-[9px] text-zinc-500">CARDHOLDER</span>
+              <span className="font-semibold text-zinc-200 truncate max-w-[200px]">
+                {cardholderName || "YOUR NAME"}
               </span>
             </div>
-
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col">
-                <span className="text-[9px] text-slate-400 tracking-wider">EXPIRES</span>
-                <span className="font-bold text-white">{expMonth} / {expYear}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] text-slate-400 tracking-wider">CVV</span>
-                <span className="font-bold text-white">{showCvv ? cvv || "•••" : "•••"}</span>
-              </div>
+            <div className="flex flex-col text-right">
+              <span className="text-[9px] text-zinc-500">EXPIRES</span>
+              <span className="font-semibold text-zinc-200">{expMonth}/{expYear}</span>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Form Body */}
+        {/* Form Fields */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
-            {/* Nickname */}
-            <div className="flex flex-col gap-1.5 col-span-2">
-              <label className="text-xs font-medium text-slate-400">Card Nickname / Label</label>
+            {/* Card Label */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-400">Card Nickname / Title</label>
               <input
                 type="text"
                 value={cardTitle}
                 onChange={(e) => setCardTitle(e.target.value)}
-                placeholder="e.g. Personal Sapphire Card, Corporate Expense"
-                className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#6366F1] font-sans"
+                placeholder="e.g. Chase Sapphire, Corporate Visa"
+                className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-sans"
               />
             </div>
 
             {/* Cardholder Name */}
-            <div className="flex flex-col gap-1.5 col-span-2">
-              <label className="text-xs font-medium text-slate-400">Cardholder Name</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-400">Cardholder Full Name</label>
               <input
                 type="text"
-                required
                 value={cardholderName}
                 onChange={(e) => setCardholderName(e.target.value)}
-                placeholder="Full Name as printed on card"
-                className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#6366F1] font-sans uppercase"
+                placeholder="Full Name as on Card"
+                className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-sans uppercase"
               />
             </div>
 
             {/* Card Number */}
-            <div className="flex flex-col gap-1.5 col-span-2">
+            <div className="col-span-2 flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-400">Card Number (PAN)</label>
-                <span className="text-[10px] font-mono text-[#38BDF8]">
-                  ✓ 256-bit Enclave Masked
+                <label className="text-xs font-medium text-zinc-400">Primary Account Number (PAN)</label>
+                <span className="text-[10px] font-mono text-zinc-400">
+                  {brand.toUpperCase()} DETECTED
                 </span>
               </div>
               <input
                 type="text"
                 required
-                maxLength={19}
                 value={cardNumber}
                 onChange={(e) => handleCardNumberChange(e.target.value)}
-                placeholder="4532  ••••  ••••  8821"
-                className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#6366F1] font-mono tracking-wider"
+                placeholder="16-digit card number"
+                maxLength={19}
+                className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono tracking-wider"
               />
             </div>
 
-            {/* Expiry */}
+            {/* Expiration Date */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400">Expiration Date (MM / YY)</label>
+              <label className="text-xs font-medium text-zinc-400">Expiration Date (MM / YY)</label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -237,16 +222,16 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
                   value={expMonth}
                   onChange={(e) => setExpMonth(e.target.value)}
                   placeholder="MM"
-                  className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3 py-2 text-xs text-white text-center font-mono focus:outline-none focus:border-[#6366F1]"
+                  className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3 py-2 text-xs text-white text-center font-mono focus:outline-none focus:border-zinc-500"
                 />
-                <span className="text-slate-500 font-mono">/</span>
+                <span className="text-zinc-600">/</span>
                 <input
                   type="text"
                   maxLength={2}
                   value={expYear}
                   onChange={(e) => setExpYear(e.target.value)}
                   placeholder="YY"
-                  className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3 py-2 text-xs text-white text-center font-mono focus:outline-none focus:border-[#6366F1]"
+                  className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3 py-2 text-xs text-white text-center font-mono focus:outline-none focus:border-zinc-500"
                 />
               </div>
             </div>
@@ -254,11 +239,11 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
             {/* CVV */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-400">Security Code (CVV)</label>
+                <label className="text-xs font-medium text-zinc-400">Security Code (CVV)</label>
                 <button
                   type="button"
                   onClick={() => setShowCvv((prev) => !prev)}
-                  className="text-[10px] text-indigo-400 hover:underline cursor-pointer"
+                  className="text-[10px] text-zinc-400 hover:text-white cursor-pointer"
                 >
                   {showCvv ? "Hide" : "Reveal"}
                 </button>
@@ -269,18 +254,18 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
                 value={cvv}
                 onChange={(e) => setCvv(e.target.value)}
                 placeholder="3 or 4 digits"
-                className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#6366F1]"
+                className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-zinc-500"
               />
             </div>
 
             {/* PIN (Optional) */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-400">Card PIN (Optional)</label>
+                <label className="text-xs font-medium text-zinc-400">Card PIN (Optional)</label>
                 <button
                   type="button"
                   onClick={() => setShowPin(!showPin)}
-                  className="text-slate-400 hover:text-white"
+                  className="text-zinc-400 hover:text-white"
                 >
                   {showPin ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
@@ -291,43 +276,41 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 placeholder="4-digit PIN"
-                className="w-full bg-[#0D0F17] border border-[#242B3D] rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-[#6366F1]"
+                className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-zinc-500"
               />
             </div>
 
             {/* Brand manual selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-400">Card Brand</label>
+              <label className="text-xs font-medium text-zinc-400">Card Brand</label>
               <div className="flex items-center gap-1.5">
                 {(["visa", "mastercard", "amex", "discover"] as const).map((b) => (
-                  <motion.button
+                  <button
                     key={b}
                     type="button"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     onClick={() => setBrand(b)}
                     className={`flex-1 py-1.5 rounded-lg text-[10px] font-mono font-bold uppercase transition-all cursor-pointer ${
                       brand === b
-                        ? "bg-[#6366F1] text-white shadow-sm"
-                        : "bg-slate-800/60 text-slate-400 hover:text-white"
+                        ? "bg-white text-black shadow-sm"
+                        : "bg-[#18181B] border border-[#27272A] text-zinc-400 hover:text-white"
                     }`}
                   >
                     {b}
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             </div>
           </div>
 
           {/* Collapsible Billing Address */}
-          <div className="border border-[#242B3D] rounded-xl p-3 bg-[#0D0F17]/60 flex flex-col gap-2">
+          <div className="border border-[#27272A] rounded-xl p-3 bg-[#18181B] flex flex-col gap-2">
             <button
               type="button"
               onClick={() => setShowBilling((prev) => !prev)}
-              className="flex items-center justify-between w-full text-xs font-medium text-slate-300 hover:text-white cursor-pointer"
+              className="flex items-center justify-between w-full text-xs font-medium text-zinc-300 hover:text-white cursor-pointer"
             >
               <div className="flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                <MapPin className="w-3.5 h-3.5 text-zinc-400" />
                 <span>Billing Address</span>
               </div>
               {showBilling ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -339,22 +322,22 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#242B3D] overflow-hidden"
+                  transition={{ duration: 0.15 }}
+                  className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#27272A] overflow-hidden"
                 >
                   <input
                     type="text"
                     value={street}
                     onChange={(e) => setStreet(e.target.value)}
                     placeholder="Street Address"
-                    className="col-span-2 bg-[#161B26] border border-[#242B3D] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6366F1]"
+                    className="col-span-2 bg-[#121214] border border-[#27272A] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500"
                   />
                   <input
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="City"
-                    className="bg-[#161B26] border border-[#242B3D] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6366F1]"
+                    className="bg-[#121214] border border-[#27272A] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500"
                   />
                   <div className="flex gap-2">
                     <input
@@ -362,14 +345,14 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
                       value={state}
                       onChange={(e) => setState(e.target.value)}
                       placeholder="State"
-                      className="w-16 bg-[#161B26] border border-[#242B3D] rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-[#6366F1]"
+                      className="w-16 bg-[#121214] border border-[#27272A] rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-zinc-500"
                     />
                     <input
                       type="text"
                       value={zip}
                       onChange={(e) => setZip(e.target.value)}
                       placeholder="ZIP"
-                      className="flex-1 bg-[#161B26] border border-[#242B3D] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6366F1]"
+                      className="flex-1 bg-[#121214] border border-[#27272A] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500"
                     />
                   </div>
                   <input
@@ -377,7 +360,7 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     placeholder="Country"
-                    className="col-span-2 bg-[#161B26] border border-[#242B3D] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6366F1]"
+                    className="col-span-2 bg-[#121214] border border-[#27272A] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500"
                   />
                 </motion.div>
               )}
@@ -385,37 +368,33 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ onSave, onClose }) =
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-between pt-3 border-t border-[#242B3D] mt-2">
-            <span className="text-[11px] font-mono text-[#38BDF8]">
+          <div className="flex items-center justify-between pt-3.5 border-t border-[#232326] mt-2">
+            <span className="text-[11px] font-mono text-zinc-500">
               • Zero-Knowledge Sealed in Hardware Enclave
             </span>
 
             <div className="flex items-center gap-3">
-              <motion.button
+              <button
                 type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 Cancel
-              </motion.button>
-              <motion.button
+              </button>
+              <button
                 type="submit"
                 disabled={saving}
-                whileHover={!saving ? { scale: 1.02 } : undefined}
-                whileTap={!saving ? { scale: 0.98 } : undefined}
-                className="px-5 py-2.5 rounded-xl bg-[#6366F1] hover:bg-[#5254e0] text-white text-xs font-semibold shadow-lg shadow-[#6366F1]/20 transition-all cursor-pointer flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center gap-2"
               >
                 {saving ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-black" />
                     <span>Sealing Card...</span>
                   </>
                 ) : (
                   <span>Save Encrypted Card</span>
                 )}
-              </motion.button>
+              </button>
             </div>
           </div>
         </form>

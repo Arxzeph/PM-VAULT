@@ -45,93 +45,87 @@ export const Sidebar: React.FC<SidebarProps> = ({
   username,
 }) => {
   return (
-    <aside className="w-64 flex-shrink-0 bg-[#0C0E16]/85 backdrop-blur-xl border-r border-[#242B3D]/80 flex flex-col justify-between h-screen p-4 select-none relative z-20">
+    <aside className="w-60 flex-shrink-0 bg-[#000000] border-r border-[#232326] flex flex-col justify-between h-screen p-3.5 select-none relative z-20">
       {/* Top Header & Vault Selector */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3.5">
         {/* Brand Header */}
-        <div className="flex items-center gap-3 px-2 py-1">
-          <div className="w-9 h-9 rounded-xl bg-[#6366F1]/15 border border-[#6366F1]/30 flex items-center justify-center text-[#38BDF8] shadow-lg shadow-[#6366F1]/15">
-            <Shield className="w-5 h-5 text-[#38BDF8]" />
+        <div className="flex items-center gap-2.5 px-1 py-1">
+          <div className="w-8 h-8 rounded-lg bg-[#161618] border border-[#27272A] flex items-center justify-center text-white shadow-sm">
+            <Shield className="w-4 h-4 text-white" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-sm tracking-wider text-white">PM-VAULT</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-[#38BDF8] border border-indigo-500/30 font-medium">
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">
                 v2.4
               </span>
             </div>
-            <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">PASSWORD ENCLAVE</span>
+            <span className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase">PASSWORD ENCLAVE</span>
           </div>
         </div>
 
         {/* Active Vault Card / Selector */}
-        <div className="bg-[#161B26]/80 border border-[#242B3D] hover:border-[#38BDF8]/40 rounded-xl p-3 flex items-center justify-between hover:bg-[#161B26] transition-all cursor-pointer group shadow-sm">
+        <div className="bg-[#121214] border border-[#232326] hover:border-zinc-700 rounded-xl p-2.5 flex items-center justify-between hover:bg-[#161618] transition-all cursor-pointer group">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-[#38BDF8]">
-              <Lock className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <Lock className="w-3 h-3 text-zinc-400" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-slate-200 truncate group-hover:text-white">
+              <span className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white font-sans">
                 {username ? `${username}'s Vault` : "Personal Vault"}
               </span>
-              <span className="text-[11px] font-mono text-slate-400">
-                {counts.all} passwords • Master
+              <span className="text-[10px] font-mono text-zinc-500">
+                {counts.all} passwords
               </span>
             </div>
           </div>
-          <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-[#38BDF8] transition-colors" />
+          <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
         </div>
 
         {/* Navigation Section */}
         <nav className="flex flex-col gap-1 mt-1">
           {/* All Passwords */}
           <motion.button
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ x: 1 }}
+            whileTap={{ scale: 0.99 }}
             onClick={() => onSelectCategory("all")}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer relative ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer font-sans ${
               activeCategory === "all"
-                ? "bg-[#6366F1]/20 border border-[#6366F1]/40 text-white shadow-md shadow-[#6366F1]/10 font-semibold"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/40 border border-transparent"
+                ? "bg-[#1C1C20] border border-zinc-700 text-white font-semibold shadow-sm"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent"
             }`}
           >
-            {activeCategory === "all" && (
-              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#38BDF8]" />
-            )}
-            <div className="flex items-center gap-3">
-              <FolderOpen className={`w-4 h-4 ${activeCategory === "all" ? "text-[#38BDF8]" : "text-slate-400"}`} />
+            <div className="flex items-center gap-2.5">
+              <FolderOpen className={`w-3.5 h-3.5 ${activeCategory === "all" ? "text-white" : "text-zinc-500"}`} />
               <span>All Passwords</span>
             </div>
             <span
-              className={`text-xs font-mono px-2 py-0.5 rounded-md ${
-                activeCategory === "all" ? "bg-[#38BDF8]/20 text-[#38BDF8] font-bold border border-[#38BDF8]/30" : "bg-slate-800/80 text-slate-400"
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                activeCategory === "all" ? "bg-zinc-800 text-white font-bold" : "bg-zinc-900 text-zinc-500"
               }`}
             >
               {counts.all}
             </span>
           </motion.button>
 
-          {/* Logins / Credentials */}
+          {/* Active Logins */}
           <motion.button
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ x: 1 }}
+            whileTap={{ scale: 0.99 }}
             onClick={() => onSelectCategory("logins")}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer relative ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer font-sans ${
               activeCategory === "logins"
-                ? "bg-[#6366F1]/20 border border-[#6366F1]/40 text-white shadow-md shadow-[#6366F1]/10 font-semibold"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/40 border border-transparent"
+                ? "bg-[#1C1C20] border border-zinc-700 text-white font-semibold shadow-sm"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent"
             }`}
           >
-            {activeCategory === "logins" && (
-              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#38BDF8]" />
-            )}
-            <div className="flex items-center gap-3">
-              <KeyRound className={`w-4 h-4 ${activeCategory === "logins" ? "text-[#38BDF8]" : "text-slate-400"}`} />
+            <div className="flex items-center gap-2.5">
+              <KeyRound className={`w-3.5 h-3.5 ${activeCategory === "logins" ? "text-white" : "text-zinc-500"}`} />
               <span>Active Logins</span>
             </div>
             <span
-              className={`text-xs font-mono px-2 py-0.5 rounded-md ${
-                activeCategory === "logins" ? "bg-[#38BDF8]/20 text-[#38BDF8] font-bold border border-[#38BDF8]/30" : "bg-slate-800/80 text-slate-400"
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                activeCategory === "logins" ? "bg-zinc-800 text-white font-bold" : "bg-zinc-900 text-zinc-500"
               }`}
             >
               {counts.logins}
@@ -141,45 +135,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Quick-Access Password Generator */}
           {onOpenGenerator && (
             <motion.button
-              whileHover={{ x: 2 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ x: 1 }}
+              whileTap={{ scale: 0.99 }}
               onClick={onOpenGenerator}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer text-[#38BDF8] hover:text-white hover:bg-[#38BDF8]/10 border border-[#38BDF8]/20 bg-[#38BDF8]/5 my-1"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer text-zinc-300 hover:text-white hover:bg-zinc-900 border border-zinc-800 bg-[#121214] my-1 font-sans"
             >
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-[#38BDF8]" />
-                <span className="font-semibold">Password Generator</span>
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Password Generator</span>
               </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30">
-                PRO
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400">
+                TOOL
               </span>
             </motion.button>
           )}
 
           {/* Divider */}
-          <div className="border-t border-[#242B3D]/70 my-2" />
+          <div className="border-t border-[#232326] my-1.5" />
 
           {/* Archive */}
           <motion.button
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ x: 1 }}
+            whileTap={{ scale: 0.99 }}
             onClick={() => onSelectCategory("archive")}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer relative ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer font-sans ${
               activeCategory === "archive"
-                ? "bg-[#6366F1]/20 border border-[#6366F1]/40 text-white shadow-md shadow-[#6366F1]/10 font-semibold"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/40 border border-transparent"
+                ? "bg-[#1C1C20] border border-zinc-700 text-white font-semibold shadow-sm"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent"
             }`}
           >
-            {activeCategory === "archive" && (
-              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#38BDF8]" />
-            )}
-            <div className="flex items-center gap-3">
-              <Archive className={`w-4 h-4 ${activeCategory === "archive" ? "text-[#38BDF8]" : "text-slate-400"}`} />
+            <div className="flex items-center gap-2.5">
+              <Archive className={`w-3.5 h-3.5 ${activeCategory === "archive" ? "text-white" : "text-zinc-500"}`} />
               <span>Archive</span>
             </div>
             <span
-              className={`text-xs font-mono px-2 py-0.5 rounded-md ${
-                activeCategory === "archive" ? "bg-[#38BDF8]/20 text-[#38BDF8] font-bold border border-[#38BDF8]/30" : "bg-slate-800/80 text-slate-400"
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                activeCategory === "archive" ? "bg-zinc-800 text-white font-bold" : "bg-zinc-900 text-zinc-500"
               }`}
             >
               {counts.archive}
@@ -188,25 +179,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Trash */}
           <motion.button
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ x: 1 }}
+            whileTap={{ scale: 0.99 }}
             onClick={() => onSelectCategory("trash")}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer relative ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer font-sans ${
               activeCategory === "trash"
-                ? "bg-rose-950/40 border border-rose-800/60 text-rose-300 shadow-md font-semibold"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/40 border border-transparent"
+                ? "bg-red-950/40 border border-red-800/60 text-red-300 font-semibold"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent"
             }`}
           >
-            {activeCategory === "trash" && (
-              <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-rose-500" />
-            )}
-            <div className="flex items-center gap-3">
-              <Trash2 className={`w-4 h-4 ${activeCategory === "trash" ? "text-rose-400" : "text-slate-400"}`} />
+            <div className="flex items-center gap-2.5">
+              <Trash2 className={`w-3.5 h-3.5 ${activeCategory === "trash" ? "text-red-400" : "text-zinc-500"}`} />
               <span>Trash</span>
             </div>
             <span
-              className={`text-xs font-mono px-2 py-0.5 rounded-md ${
-                activeCategory === "trash" ? "bg-rose-900/50 text-rose-300 font-bold border border-rose-700/50" : "bg-slate-800/80 text-slate-400"
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                activeCategory === "trash" ? "bg-red-900/60 text-red-300 font-bold" : "bg-zinc-900 text-zinc-500"
               }`}
             >
               {counts.trash}
@@ -215,53 +203,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Standardized Vertical Footer (Clean Full-Width Stack) */}
-      <div className="flex flex-col gap-2 pt-3 border-t border-[#242B3D]/70">
+      {/* Footer Controls */}
+      <div className="flex flex-col gap-1.5 pt-3 border-t border-[#232326]">
         {/* Full-width E2E Encrypted Status Card */}
-        <div className="bg-[#161B26]/80 border border-[#242B3D] rounded-xl px-3 py-2.5 flex items-center justify-between">
+        <div className="bg-[#121214] border border-[#232326] rounded-lg px-2.5 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse" />
-            <span className="text-xs font-medium text-slate-300">E2E Encrypted</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+            <span className="text-[11px] font-medium text-zinc-300 font-sans">E2E Encrypted</span>
           </div>
-          <span className="text-[11px] font-mono text-[#38BDF8] font-medium">
+          <span className="text-[10px] font-mono text-zinc-400">
             {syncStatus === "syncing" ? "Syncing..." : syncStatus === "offline" ? "Offline" : "Synced"}
           </span>
         </div>
 
-        {/* Row 1: Full-width Settings */}
+        {/* Row 1: Settings */}
         <motion.button
-          whileHover={{ x: 2 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ x: 1 }}
+          whileTap={{ scale: 0.99 }}
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors text-xs font-medium text-left cursor-pointer"
+          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors text-xs font-medium text-left cursor-pointer font-sans"
         >
-          <Settings className="w-4 h-4 text-slate-400" />
+          <Settings className="w-3.5 h-3.5 text-zinc-500" />
           <span>Settings</span>
         </motion.button>
 
-        {/* Row 2: Full-width Encrypted Sync */}
+        {/* Row 2: Encrypted Sync */}
         <motion.button
-          whileHover={{ x: 2 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ x: 1 }}
+          whileTap={{ scale: 0.99 }}
           onClick={onTriggerSync}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors text-xs font-medium text-left cursor-pointer"
+          className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors text-xs font-medium text-left cursor-pointer font-sans"
         >
-          <RefreshCw className={`w-4 h-4 text-slate-400 ${syncStatus === "syncing" ? "animate-spin text-[#38BDF8]" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-zinc-500 ${syncStatus === "syncing" ? "animate-spin text-white" : ""}`} />
           <span>Encrypted Sync</span>
         </motion.button>
 
-        {/* Row 3: Full-width Lock Vault with Shortcut Badge */}
+        {/* Row 3: Lock Vault */}
         <motion.button
           whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
+          whileTap={{ scale: 0.99 }}
           onClick={onLockVault}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 border border-[#242B3D] hover:border-[#38BDF8]/40 transition-all text-xs font-medium cursor-pointer"
+          className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-[#1C1C20] border border-[#232326] hover:border-zinc-700 transition-all text-xs font-medium cursor-pointer font-sans"
         >
-          <div className="flex items-center gap-2.5">
-            <Lock className="w-4 h-4 text-[#38BDF8]" />
+          <div className="flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-zinc-400" />
             <span>Lock Vault</span>
           </div>
-          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400">
+          <kbd className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-500">
             Ctrl+L
           </kbd>
         </motion.button>

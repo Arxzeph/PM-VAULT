@@ -53,7 +53,7 @@ const KNOWN_BRANDS: Record<string, DetectedBrand> = {
     domain: "github.com",
     autofillUrl: "https://github.com/login",
     iconName: "github",
-    accentColor: "#6366F1",
+    accentColor: "#FFFFFF",
   },
   google: {
     name: "Google Account",

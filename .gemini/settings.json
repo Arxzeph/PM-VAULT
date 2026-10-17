@@ -7,6 +7,12 @@
     "motion-plus": {
       "type": "http",
       "url": "https://mcp.motion.dev/plus"
+    },
+    "reactbits": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Arxzeph\\AppData\\Roaming\\npm\\node_modules\\reactbits-dev-mcp-server\\dist\\index.js"
+      ]
     }
   }
 }

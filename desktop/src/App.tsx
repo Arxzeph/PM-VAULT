@@ -209,8 +209,8 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="h-screen w-screen bg-[#0D0F17] flex items-center justify-center text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin text-[#38BDF8]" />
+      <div className="h-screen w-screen bg-[#09090B] flex items-center justify-center text-zinc-400">
+        <Loader2 className="w-6 h-6 animate-spin text-white" />
       </div>
     );
   }
@@ -262,9 +262,9 @@ export function App() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-5 right-5 z-50 px-3.5 py-2.5 bg-[#161B26]/95 border border-[#242B3D] rounded-xl shadow-2xl text-xs text-slate-200 flex items-center gap-2.5 backdrop-blur-md"
+            className="fixed bottom-5 right-5 z-50 px-3.5 py-2.5 bg-[#121214] border border-[#232326] rounded-xl shadow-2xl text-xs text-zinc-200 flex items-center gap-2.5"
           >
-            <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-zinc-400" />
             <span className="font-medium">{toastMessage}</span>
           </motion.div>
         )}

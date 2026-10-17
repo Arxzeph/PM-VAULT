@@ -18,7 +18,7 @@ export interface ClickSparkProps {
 
 export const ClickSpark: React.FC<ClickSparkProps> = ({
   children,
-  sparkColor = "#38BDF8",
+  sparkColor = "#FFFFFF",
   sparkCount = 8,
   className = "",
 }) => {

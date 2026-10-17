@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "../services/api";
 import { supabaseService } from "../services/supabase";
-import { SpotlightCard } from "./reactbits/SpotlightCard";
-import { StarBorder } from "./reactbits/StarBorder";
 import {
   Lock,
   Eye,
@@ -133,11 +131,11 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
       const existingSalt = await supabaseService.fetchUserSalt(cleanEmail);
       if (existingSalt) {
         throw new Error(
-          "An encrypted vault already exists for this email! Please click 'Connect Existing' instead."
+          "An encrypted vault already exists for this email! Please click 'Sync Existing' instead."
         );
       }
 
-      setStatusMessage("Generating cryptographic keys (Argon2id + AES-256)...");
+      setStatusMessage("Generating cryptographic keys (Argon2id + ChaCha20)...");
       const initRes = await api.initVault(cleanEmail, password);
 
       setStatusMessage("Registering zero-knowledge cloud account...");
@@ -196,80 +194,76 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
   };
 
   return (
-    <div className="h-screen w-screen bg-[#0C0E16] flex flex-col justify-between items-center relative overflow-hidden select-none font-sans text-white">
+    <div className="h-screen w-screen bg-[#09090B] flex flex-col justify-between items-center relative overflow-hidden select-none font-sans text-white">
       {/* Top Enclave Telemetry Strip */}
-      <header className="w-full py-2.5 px-6 border-b border-[#242B3D]/70 bg-[#0C0E16]/80 backdrop-blur-xl flex items-center justify-between text-[11px] font-mono text-slate-400 z-10">
+      <header className="w-full py-2.5 px-6 border-b border-[#232326] bg-[#09090B] flex items-center justify-between text-[11px] font-mono text-zinc-500 z-10">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-slate-300 font-mono">
-            <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse" />
+          <span className="flex items-center gap-2 text-zinc-300 font-mono">
+            <span className="w-2 h-2 rounded-full bg-zinc-400" />
             NODE://LOCAL_ENCLAVE_ISOLATED
           </span>
-          <span className="text-slate-600">•</span>
-          <span className="text-slate-300 font-mono">TPM 2.0 ACTIVE</span>
+          <span className="text-zinc-700">•</span>
+          <span className="text-zinc-400 font-mono">TPM 2.0 ACTIVE</span>
         </div>
 
-        <div className="flex items-center gap-4 text-slate-400 font-mono">
+        <div className="flex items-center gap-4 text-zinc-500 font-mono">
           <span>ARGON2ID-CHACHA20-POLY1305</span>
-          <span className="text-slate-600">•</span>
-          <span className="text-[#38BDF8]">ZERO-KNOWLEDGE STRICT</span>
+          <span className="text-zinc-700">•</span>
+          <span className="text-zinc-300">ZERO-KNOWLEDGE STRICT</span>
         </div>
       </header>
 
-      {/* Main Centered Unlock Security Card (SpotlightCard) */}
+      {/* Main Centered Unlock Security Card */}
       <main className="flex-1 flex items-center justify-center p-4 w-full z-10">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 14 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 350 }}
           className="max-w-md w-full"
         >
-          <SpotlightCard
-            spotlightColor="rgba(56, 189, 248, 0.1)"
-            borderGlowColor="rgba(56, 189, 248, 0.35)"
-            className="p-8 bg-[#161B26]/90 backdrop-blur-2xl border border-[#242B3D] shadow-2xl flex flex-col gap-6"
-          >
+          <div className="p-8 bg-[#121214] border border-[#232326] rounded-2xl shadow-xl flex flex-col gap-6">
             {/* Brand Header */}
             <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-[#6366F1]/15 border border-[#6366F1]/30 flex items-center justify-center text-[#38BDF8] shadow-xl shadow-[#6366F1]/15">
-                <Shield className="w-7 h-7 text-[#38BDF8]" />
+              <div className="w-14 h-14 rounded-2xl bg-[#18181B] border border-[#27272A] flex items-center justify-center text-white shadow-sm">
+                <Shield className="w-7 h-7 text-white" />
               </div>
 
               <div className="flex flex-col">
                 <div className="flex items-center justify-center gap-2">
-                  <h1 className="text-xl font-display font-bold tracking-wider text-white">PM-VAULT</h1>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-[#38BDF8] border border-indigo-500/30 font-semibold">
+                  <h1 className="text-xl font-display font-bold tracking-tight text-white">PM-VAULT</h1>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-semibold">
                     v2.4
                   </span>
                 </div>
-                <p className="text-[11px] font-mono text-slate-400 mt-1 tracking-widest uppercase">
+                <p className="text-[11px] font-mono text-zinc-500 mt-1 tracking-widest uppercase">
                   ZERO-KNOWLEDGE HARDWARE ENCLAVE
                 </p>
               </div>
             </div>
 
-            {/* Active Vault Identity Bar with Collapsed Switch Dropdown */}
+            {/* Active Vault Identity Bar with Switch Dropdown */}
             {isInitialized && (
               <div className="relative">
                 <div
                   onClick={() => setShowSwitchMenu((prev) => !prev)}
-                  className="bg-[#0D0F17]/90 border border-[#242B3D] hover:border-[#38BDF8]/40 rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors"
+                  className="bg-[#18181B] border border-[#27272A] hover:border-zinc-600 rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-[#38BDF8]">
-                      <KeyRound className="w-3.5 h-3.5 text-[#38BDF8]" />
+                    <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300">
+                      <KeyRound className="w-3.5 h-3.5 text-zinc-300" />
                     </div>
                     <div className="flex flex-col text-left">
-                      <span className="text-xs font-semibold text-slate-200">
+                      <span className="text-xs font-semibold text-zinc-200">
                         {savedEmail || "Personal Vault"}
                       </span>
-                      <span className="text-[10px] font-mono text-slate-400">
+                      <span className="text-[10px] font-mono text-zinc-500">
                         Local Encrypted Enclave
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <span className="text-[11px] font-mono text-[#38BDF8]">Switch</span>
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                    <span className="text-[11px] font-mono text-zinc-300">Switch</span>
                     <ChevronDown className="w-3.5 h-3.5" />
                   </div>
                 </div>
@@ -278,22 +272,22 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                 <AnimatePresence>
                   {showSwitchMenu && (
                     <motion.div
-                      initial={{ opacity: 0, scale: 0.94, y: -6 }}
+                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.94, y: -6 }}
-                      transition={{ duration: 0.14 }}
-                      className="absolute left-0 top-full mt-1.5 w-full bg-[#161B26]/95 border border-[#242B3D] rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 backdrop-blur-xl"
+                      exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                      transition={{ duration: 0.1 }}
+                      className="absolute left-0 top-full mt-1.5 w-full bg-[#121214] border border-[#27272A] rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1"
                     >
-                      <div className="px-2.5 py-1 text-[10px] font-mono text-slate-400 uppercase">
+                      <div className="px-2.5 py-1 text-[10px] font-mono text-zinc-500 uppercase">
                         Select Enclave Identity
                       </div>
                       <button
                         type="button"
                         onClick={() => setShowSwitchMenu(false)}
-                        className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-[#6366F1]/20 border border-[#6366F1]/30 text-white text-xs font-medium cursor-pointer"
+                        className="flex items-center justify-between px-2.5 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-xs font-medium cursor-pointer"
                       >
                         <span>{savedEmail || "Personal Vault (Master)"}</span>
-                        <span className="text-[10px] text-[#38BDF8] font-mono">Active</span>
+                        <span className="text-[10px] text-zinc-400 font-mono">Active</span>
                       </button>
                       <button
                         type="button"
@@ -301,9 +295,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                           setShowSwitchMenu(false);
                           setInitMode("connect");
                         }}
-                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800/80 text-slate-300 text-xs font-medium transition-colors text-left cursor-pointer"
+                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-zinc-800/80 text-zinc-300 text-xs font-medium transition-colors text-left cursor-pointer"
                       >
-                        <PlusCircle className="w-3.5 h-3.5 text-[#38BDF8]" />
+                        <PlusCircle className="w-3.5 h-3.5 text-zinc-400" />
                         <span>Connect Other Cloud Vault</span>
                       </button>
                     </motion.div>
@@ -319,7 +313,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  className="p-3 bg-rose-950/40 border border-rose-800/80 rounded-xl text-xs text-rose-300 flex items-center gap-2"
+                  className="p-3 bg-rose-950/30 border border-rose-800/60 rounded-xl text-xs text-rose-300 flex items-center gap-2"
                 >
                   <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                   <span>{error}</span>
@@ -334,9 +328,9 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  className="p-3 bg-indigo-950/40 border border-indigo-800/60 rounded-xl text-xs text-indigo-300 flex items-center gap-2"
+                  className="p-3 bg-zinc-800/60 border border-zinc-700 rounded-xl text-xs text-zinc-300 flex items-center gap-2"
                 >
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#38BDF8]" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-zinc-300" />
                   <span>{statusMessage}</span>
                 </motion.div>
               )}
@@ -346,11 +340,11 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
             {isInitialized ? (
               <form onSubmit={handleUnlock} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-400 flex items-center justify-between">
+                  <label className="text-xs font-medium text-zinc-400 flex items-center justify-between">
                     <span>Master Password</span>
-                    <span className="text-[10px] font-mono text-[#38BDF8]">AES-256 / ChaCha20</span>
+                    <span className="text-[10px] font-mono text-zinc-500">ChaCha20-Poly1305</span>
                   </label>
-                  <div className="flex items-center bg-[#0D0F17]/90 border border-[#242B3D] focus-within:border-[#38BDF8]/60 focus-within:ring-1 focus-within:ring-[#38BDF8]/30 rounded-xl px-3.5 py-2.5 transition-all">
+                  <div className="flex items-center bg-[#18181B] border border-[#27272A] focus-within:border-zinc-500 focus-within:ring-1 focus-within:ring-zinc-600 rounded-xl px-3.5 py-2.5 transition-all">
                     <input
                       type={showPassword ? "text" : "password"}
                       required
@@ -358,53 +352,49 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter Master Password"
-                      className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none font-mono tracking-wider"
+                      className="w-full bg-transparent text-sm text-white placeholder-zinc-600 focus:outline-none font-mono tracking-wider"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="p-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      className="p-1 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Primary CTA with StarBorder */}
-                <StarBorder
+                {/* Primary Solid White CTA */}
+                <button
                   type="submit"
                   disabled={loading || !password}
-                  color="#6366F1"
-                  trailColor="#38BDF8"
-                  className="w-full mt-2"
+                  className="w-full mt-2 py-3 px-4 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-50 text-black font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
-                  <div className="flex items-center justify-center gap-2 font-semibold text-sm text-white py-0.5">
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#38BDF8]" />
-                        <span>Deriving Keys...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-4 h-4 text-[#38BDF8]" />
-                        <span>Unlock Vault</span>
-                      </>
-                    )}
-                  </div>
-                </StarBorder>
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                      <span>Deriving Keys...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-black" />
+                      <span>Unlock Vault</span>
+                    </>
+                  )}
+                </button>
               </form>
             ) : (
               /* First-time setup / Connect cloud vault form */
               <form onSubmit={initMode === "connect" ? handleConnect : handleInit} className="flex flex-col gap-4">
                 {/* Mode Switcher */}
-                <div className="flex items-center gap-2 bg-[#0D0F17]/90 p-1 rounded-xl border border-[#242B3D]">
+                <div className="flex items-center gap-1.5 bg-[#18181B] p-1 rounded-xl border border-[#27272A]">
                   <button
                     type="button"
                     onClick={() => setInitMode("connect")}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       initMode === "connect"
-                        ? "bg-[#6366F1] text-white shadow-sm"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-white text-black shadow-sm"
+                        : "text-zinc-400 hover:text-white"
                     }`}
                   >
                     Sync Existing
@@ -414,8 +404,8 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
                     onClick={() => setInitMode("create")}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       initMode === "create"
-                        ? "bg-[#6366F1] text-white shadow-sm"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-white text-black shadow-sm"
+                        : "text-zinc-400 hover:text-white"
                     }`}
                   >
                     Create New
@@ -424,84 +414,80 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
 
                 {/* Email Input */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-400">Account Email</label>
+                  <label className="text-xs font-medium text-zinc-400">Account Email</label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@example.com"
-                    className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 font-sans"
+                    className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-sans"
                   />
                 </div>
 
                 {/* Master Password Input */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-400">Master Password</label>
+                  <label className="text-xs font-medium text-zinc-400">Master Password</label>
                   <input
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min 8 characters (Argon2id derived)"
-                    className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 font-mono"
+                    className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
                   />
                 </div>
 
                 {/* Confirm Password if creating new */}
                 {initMode === "create" && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-slate-400">Confirm Master Password</label>
+                    <label className="text-xs font-medium text-zinc-400">Confirm Master Password</label>
                     <input
                       type="password"
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter master password"
-                      className="w-full bg-[#0D0F17]/90 border border-[#242B3D] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#38BDF8]/60 font-mono"
+                      className="w-full bg-[#18181B] border border-[#27272A] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 font-mono"
                     />
                   </div>
                 )}
 
-                <StarBorder
+                <button
                   type="submit"
                   disabled={loading}
-                  color="#6366F1"
-                  trailColor="#38BDF8"
-                  className="w-full mt-2"
+                  className="w-full mt-2 py-3 px-4 rounded-xl bg-white hover:bg-zinc-200 disabled:opacity-50 text-black font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
-                  <div className="flex items-center justify-center gap-2 font-semibold text-sm text-white py-0.5">
-                    {loading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#38BDF8]" />
-                        <span>Connecting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{initMode === "connect" ? "Authenticate & Sync Vault" : "Create Master Enclave"}</span>
-                        <ArrowRight className="w-4 h-4 text-[#38BDF8]" />
-                      </>
-                    )}
-                  </div>
-                </StarBorder>
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{initMode === "connect" ? "Authenticate & Sync Vault" : "Create Master Enclave"}</span>
+                      <ArrowRight className="w-4 h-4 text-black" />
+                    </>
+                  )}
+                </button>
               </form>
             )}
-          </SpotlightCard>
+          </div>
         </motion.div>
       </main>
 
       {/* Bottom Footer Strip */}
-      <footer className="w-full py-3 px-6 border-t border-[#242B3D]/70 bg-[#0C0E16]/80 backdrop-blur-xl flex items-center justify-between text-xs font-mono text-slate-400 z-10">
+      <footer className="w-full py-3 px-6 border-t border-[#232326] bg-[#09090B] flex items-center justify-between text-xs font-mono text-zinc-500 z-10">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-[#38BDF8]" />
+          <Shield className="w-4 h-4 text-zinc-400" />
           <span>Zero-Knowledge Architecture: Master key is derived locally and never transmitted.</span>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-sans text-slate-400">
+        <div className="flex items-center gap-4 text-xs font-sans text-zinc-500">
           <button
             type="button"
             onClick={() => alert("Emergency Access Kit is available in Settings when unlocked.")}
-            className="hover:text-white transition-colors cursor-pointer"
+            className="hover:text-zinc-300 transition-colors cursor-pointer"
           >
             Emergency Access Kit
           </button>
@@ -509,7 +495,7 @@ export const UnlockScreen: React.FC<UnlockScreenProps> = ({
           <button
             type="button"
             onClick={() => alert("For security, Master Passwords cannot be reset remotely without cloud keys or recovery codes.")}
-            className="hover:text-white transition-colors cursor-pointer"
+            className="hover:text-zinc-300 transition-colors cursor-pointer"
           >
             Forgot Master Password?
           </button>

@@ -12,8 +12,8 @@ export interface StarBorderProps extends HTMLMotionProps<"button"> {
 export const StarBorder: React.FC<StarBorderProps> = ({
   children,
   className = "",
-  color = "#6366F1",
-  trailColor = "#38BDF8",
+  color = "#FFFFFF",
+  trailColor = "#71717A",
   speed = "4s",
   ...props
 }) => {
